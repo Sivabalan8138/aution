@@ -39,3 +39,18 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+/src/generated/prisma
+
+# database & local archives
+dev.db
+*.db
+postgres.zip
+pgsql/
+logfile
+pass.txt
+
+# IDE & local tool configs
+.vscode/
+.windsurf/
+.claude/

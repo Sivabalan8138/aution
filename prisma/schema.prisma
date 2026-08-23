@@ -1,0 +1,123 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Team {
+  id                 String             @id @default(uuid())
+  registrationNumber String             @unique
+  teamName           String
+  participant1Name   String
+  participant2Name   String
+  collegeName        String
+  department         String
+  phone              String
+  email              String
+  points             Int                @default(5000)
+  status             TeamStatus         @default(ACTIVE)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  bids               Bid[]
+  scoreTransactions  ScoreTransaction[]
+  wonAuctions        Auction[]
+}
+
+enum TeamStatus {
+  ACTIVE
+  DISABLED
+}
+
+model Question {
+  id         String             @id @default(uuid())
+  text       String
+  answer     String
+  difficulty QuestionDifficulty
+  basePoints Int
+  timeLimit  Int                @default(30)
+  category   String?
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+  auctions   Auction[]
+}
+
+enum QuestionDifficulty {
+  EASY
+  MEDIUM
+  HARD
+  SUPER_CHALLENGE
+}
+
+model Auction {
+  id            String             @id @default(uuid())
+  questionId    String
+  question      Question           @relation(fields: [questionId], references: [id])
+  status        AuctionStatus      @default(WAITING)
+  winnerTeamId  String?
+  winnerTeam    Team?              @relation(fields: [winnerTeamId], references: [id])
+  winningBid    Int?
+  result        AnswerResult?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  bids          Bid[]
+  scoreTx       ScoreTransaction[]
+}
+
+enum AuctionStatus {
+  WAITING
+  ACTIVE
+  CLOSED
+  COMPLETED
+  CANCELLED
+}
+
+enum AnswerResult {
+  CORRECT
+  WRONG
+}
+
+model Bid {
+  id        String   @id @default(uuid())
+  auctionId String
+  auction   Auction  @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  teamId    String
+  team      Team     @relation(fields: [teamId], references: [id])
+  amount    Int
+  createdAt DateTime @default(now())
+}
+
+model ScoreTransaction {
+  id             String          @id @default(uuid())
+  teamId         String
+  team           Team            @relation(fields: [teamId], references: [id])
+  auctionId      String?
+  auction        Auction?        @relation(fields: [auctionId], references: [id])
+  amount         Int
+  type           TransactionType
+  previousPoints Int
+  newPoints      Int
+  reason         String?
+  timestamp      DateTime        @default(now())
+}
+
+enum TransactionType {
+  AUCTION_WIN
+  AUCTION_LOSS
+  ADMIN_ADD
+  ADMIN_SUBTRACT
+  RESET
+}
+
+model EventSettings {
+  id               String   @id @default(uuid())
+  eventName        String   @default("ELECTROBIT | THE EEE AUCTION CHALLENGE")
+  currentAuctionId String?
+  eventStatus      String   @default("WAITING") // WAITING, ACTIVE, PAUSED, FINISHED
+  initialPoints    Int      @default(5000)
+  minBidIncrement  Int      @default(100)
+  defaultTimer     Int      @default(30)
+  updatedAt        DateTime @updatedAt
+}
+
