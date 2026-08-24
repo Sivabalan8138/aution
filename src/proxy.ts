@@ -52,7 +52,7 @@ export async function proxy(request: NextRequest) {
 
   // Protect /team routes except /team/login
   if (path.startsWith('/team') && path !== '/team/login') {
-    const token = request.cookies.get('team_token')?.value;
+    const token = request.cookies.get('team_token')?.value || request.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
     if (!token) {
       return NextResponse.redirect(new URL('/team/login', request.url));
     }

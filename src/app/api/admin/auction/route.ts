@@ -58,39 +58,144 @@ export async function POST(request: Request) {
       const team = await prisma.team.findUnique({ where: { id: teamId } });
       if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 });
 
-      const newPoints = result === 'CORRECT' ? team.points + amount : team.points - amount;
-      
-      // We must run this in a transaction to ensure no double scoring
-      const [updatedAuction, updatedTeam, tx] = await prisma.$transaction([
-        prisma.auction.update({
-          where: { id: auctionId },
-          data: { status: 'COMPLETED', result }
-        }),
+      if (result === 'CORRECT') {
+        const newPoints = team.points + amount;
+        
+        const [updatedAuction, updatedTeam, tx] = await prisma.$transaction([
+          prisma.auction.update({
+            where: { id: auctionId },
+            data: { status: 'COMPLETED', result: 'CORRECT' }
+          }),
+          prisma.team.update({
+            where: { id: teamId },
+            data: { points: newPoints }
+          }),
+          prisma.scoreTransaction.create({
+            data: {
+              teamId,
+              auctionId,
+              amount,
+              type: 'AUCTION_WIN',
+              previousPoints: team.points,
+              newPoints: newPoints,
+              reason: `Auction win for ${amount} points (CORRECT)`
+            }
+          })
+        ]);
+
+        if ((global as any).io) {
+          (global as any).io.emit('answer_result', {
+            result: 'CORRECT',
+            team: updatedTeam,
+            amount,
+            hasNextBidder: false
+          });
+          (global as any).io.emit('score_updated');
+          (global as any).io.emit('leaderboard_updated');
+          (global as any).io.emit('bidding_closed');
+        }
+
+        return NextResponse.json({ updatedAuction, updatedTeam, hasNextBidder: false });
+      }
+
+      // If result === 'WRONG'
+      const newPoints = Math.max(0, team.points - amount);
+
+      const [deductedTeam, lossTx] = await prisma.$transaction([
         prisma.team.update({
           where: { id: teamId },
-          data: { points: Math.max(0, newPoints) }
+          data: { points: newPoints }
         }),
         prisma.scoreTransaction.create({
           data: {
             teamId,
             auctionId,
             amount,
-            type: result === 'CORRECT' ? 'AUCTION_WIN' : 'AUCTION_LOSS',
+            type: 'AUCTION_LOSS',
             previousPoints: team.points,
-            newPoints: Math.max(0, newPoints),
-            reason: `Auction for ${amount} points (${result})`
+            newPoints: newPoints,
+            reason: `Auction loss for ${amount} points (WRONG answer)`
           }
         })
       ]);
 
-      if ((global as any).io) {
-        (global as any).io.emit('answer_result', { result, team: updatedTeam, amount });
-        (global as any).io.emit('score_updated');
-        (global as any).io.emit('leaderboard_updated');
+      // Fetch auction with all bids ordered desc by amount and score transactions
+      const auctionData = await prisma.auction.findUnique({
+        where: { id: auctionId },
+        include: {
+          bids: {
+            orderBy: { amount: 'desc' },
+            include: { team: true }
+          },
+          scoreTx: true
+        }
+      });
+
+      // Find all team IDs that have already lost/attempted in this auction
+      const failedTeamIds = new Set(
+        auctionData?.scoreTx
+          ?.filter(st => st.type === 'AUCTION_LOSS')
+          .map(st => st.teamId) || []
+      );
+
+      // Find next highest bid from a team that hasn't attempted yet
+      const nextBid = auctionData?.bids.find(b => !failedTeamIds.has(b.teamId));
+
+      let updatedAuction;
+      let hasNextBidder = false;
+
+      if (nextBid) {
+        hasNextBidder = true;
+        updatedAuction = await prisma.auction.update({
+          where: { id: auctionId },
+          data: {
+            winnerTeamId: nextBid.teamId,
+            winningBid: nextBid.amount,
+            status: 'CLOSED', // remain CLOSED for next team answer
+          },
+          include: {
+            question: true,
+            bids: { include: { team: true }, orderBy: { amount: 'desc' } },
+            winnerTeam: true,
+            scoreTx: true
+          }
+        });
+      } else {
+        updatedAuction = await prisma.auction.update({
+          where: { id: auctionId },
+          data: {
+            status: 'COMPLETED',
+            result: 'WRONG'
+          },
+          include: {
+            question: true,
+            bids: { include: { team: true }, orderBy: { amount: 'desc' } },
+            winnerTeam: true,
+            scoreTx: true
+          }
+        });
       }
 
+      if ((global as any).io) {
+        (global as any).io.emit('answer_result', {
+          result: 'WRONG',
+          team: deductedTeam,
+          amount,
+          hasNextBidder,
+          nextWinnerTeam: nextBid ? nextBid.team : null,
+          nextWinningBid: nextBid ? nextBid.amount : null
+        });
+        (global as any).io.emit('score_updated');
+        (global as any).io.emit('leaderboard_updated');
+        (global as any).io.emit('bidding_closed');
+      }
 
-      return NextResponse.json({ updatedAuction, updatedTeam });
+      return NextResponse.json({
+        updatedAuction,
+        updatedTeam: deductedTeam,
+        hasNextBidder,
+        nextBid
+      });
     }
     
     // CANCEL AUCTION
@@ -136,7 +241,8 @@ export async function GET() {
           include: { team: true },
           orderBy: { amount: 'desc' }
         },
-        winnerTeam: true
+        winnerTeam: true,
+        scoreTx: true
       }
     });
     

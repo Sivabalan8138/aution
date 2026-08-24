@@ -30,6 +30,9 @@ interface CelebrationState {
   result: 'CORRECT' | 'WRONG';
   teamName: string;
   amount: number;
+  hasNextBidder?: boolean;
+  nextWinnerTeamName?: string;
+  nextWinningBidAmount?: number;
 }
 
 const diffColor = (d: string) =>
@@ -76,11 +79,18 @@ export default function LiveScreenPage() {
 
     socket.on('bidding_closed', () => fetchAuction());
 
-    socket.on('answer_result', ({ result, team, amount }: any) => {
+    socket.on('answer_result', ({ result, team, amount, hasNextBidder, nextWinnerTeam, nextWinningBid }: any) => {
       fetchAuction();
       if (team) {
-        setCelebration({ result, teamName: team.teamName || 'Winning Team', amount: amount || 0 });
-        setTimeout(() => setCelebration(null), 8000);
+        setCelebration({
+          result,
+          teamName: team.teamName || 'Winning Team',
+          amount: amount || 0,
+          hasNextBidder,
+          nextWinnerTeamName: nextWinnerTeam?.teamName,
+          nextWinningBidAmount: nextWinningBid
+        });
+        setTimeout(() => setCelebration(null), 6000);
       }
     });
 
@@ -342,6 +352,15 @@ function CelebrationOverlay({ celebration }: { celebration: CelebrationState }) 
           {isCorrect ? `+${celebration.amount}` : `-${celebration.amount}`}
           <span className="text-3xl ml-2 opacity-70">PTS</span>
         </div>
+
+        {/* Next Bidder Info on Wrong Answer */}
+        {!isCorrect && celebration.hasNextBidder && celebration.nextWinnerTeamName && (
+          <div className="mt-6 pt-6 border-t border-red-500/30 text-yellow-300 font-medium text-lg animate-pulse">
+            Passing question to next highest bidder:<br />
+            <span className="text-white font-black text-2xl uppercase tracking-wider">{celebration.nextWinnerTeamName}</span>
+            <span className="text-yellow-400 font-mono font-bold ml-2">({celebration.nextWinningBidAmount} PTS)</span>
+          </div>
+        )}
       </div>
     </div>
   );

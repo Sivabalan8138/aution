@@ -32,9 +32,17 @@ export default function TeamBidPage() {
   const [resultOverlay, setResultOverlay] = useState<{ result: string; isOurTeam: boolean; amount: number } | null>(null);
   const bidStatusTimeout = useRef<NodeJS.Timeout | null>(null);
 
+  // Helper to get headers with token
+  const getAuthHeaders = () => {
+    const token = typeof window !== 'undefined' ? (sessionStorage.getItem('team_token') || localStorage.getItem('team_token')) : null;
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return headers;
+  };
+
   // Fetch team info
   const fetchTeam = async () => {
-    const res = await fetch('/api/team/me');
+    const res = await fetch('/api/team/me', { headers: getAuthHeaders() });
     if (res.ok) {
       const data = await res.json();
       setTeam(data);
@@ -92,17 +100,17 @@ export default function TeamBidPage() {
       fetchAuction();
     });
 
-    socket.on('answer_result', ({ result, team: winnerTeam }: any) => {
+    socket.on('answer_result', ({ result, team: evaluatedTeam, amount }: any) => {
       fetchAuction().then((data: Auction | null) => {
-        if (!data) return;
         fetchTeam(); // refresh our points
-        // Check if we were the winner
-        setResultOverlay({
-          result,
-          isOurTeam: data.winnerTeam?.id === winnerTeam?.id,
-          amount: data.winningBid || 0,
-        });
-        setTimeout(() => setResultOverlay(null), 5000);
+        if (evaluatedTeam) {
+          setResultOverlay({
+            result,
+            isOurTeam: team?.id === evaluatedTeam?.id,
+            amount: amount || 0,
+          });
+          setTimeout(() => setResultOverlay(null), 5000);
+        }
       });
     });
 
@@ -132,7 +140,7 @@ export default function TeamBidPage() {
     try {
       const res = await fetch('/api/team/bid', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ auctionId: auction.id, amount }),
       });
       const data = await res.json();
@@ -152,6 +160,10 @@ export default function TeamBidPage() {
   };
 
   const handleLogout = () => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('team_token');
+      localStorage.removeItem('team_token');
+    }
     document.cookie = 'team_token=; Max-Age=0; path=/';
     window.location.href = '/team/login';
   };
@@ -299,8 +311,8 @@ export default function TeamBidPage() {
               </div>
             )}
 
-            {/* Bid Controls — only if not already bid */}
-            {!hasAlreadyBid && (
+            {/* Bid Controls — active when not top bidder */}
+            {!(myBid && myBid.amount === currentHighestBid) && (
               <div className="glass-card p-6 border border-white/5 space-y-4">
                 <h3 className="text-sm font-bold uppercase tracking-widest text-gray-300">Place Your Bid</h3>
 

@@ -60,6 +60,11 @@ export default function TeamLogin() {
       });
 
       if (res.ok) {
+        const data = await res.json();
+        if (data.token) {
+          sessionStorage.setItem('team_token', data.token);
+          localStorage.setItem('team_token', data.token);
+        }
         router.push('/team/bid');
       } else {
         const data = await res.json();

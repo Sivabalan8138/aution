@@ -38,7 +38,7 @@ export async function POST(request: Request) {
       .setExpirationTime('12h')
       .sign(secret);
 
-    const response = NextResponse.json({ success: true, teamName: team.teamName });
+    const response = NextResponse.json({ success: true, teamName: team.teamName, token });
     response.cookies.set({
       name: 'team_token',
       value: token,

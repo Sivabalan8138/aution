@@ -5,7 +5,17 @@ import type { NextRequest } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
-    const token = request.cookies.get('team_token')?.value;
+    let token: string | undefined;
+
+    const authHeader = request.headers.get('authorization');
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    }
+
+    if (!token) {
+      token = request.cookies.get('team_token')?.value;
+    }
+
     if (!token) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }

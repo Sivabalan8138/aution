@@ -4,13 +4,26 @@ import prisma from '@/lib/db';
 
 // Helper to get team from cookie
 async function getTeamFromRequest(request: Request) {
-  const cookieHeader = request.headers.get('cookie') || '';
-  const tokenMatch = cookieHeader.match(/team_token=([^;]+)/);
-  if (!tokenMatch) return null;
+  let token: string | undefined;
+
+  const authHeader = request.headers.get('authorization');
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7);
+  }
+
+  if (!token) {
+    const cookieHeader = request.headers.get('cookie') || '';
+    const tokenMatch = cookieHeader.match(/team_token=([^;]+)/);
+    if (tokenMatch) {
+      token = tokenMatch[1];
+    }
+  }
+
+  if (!token) return null;
 
   try {
     const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'secret');
-    const { payload } = await jwtVerify(tokenMatch[1], secret);
+    const { payload } = await jwtVerify(token, secret);
     if (payload.role !== 'team' || !payload.teamId) return null;
     return payload as { teamId: string; teamName: string; role: string };
   } catch {
@@ -57,9 +70,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Insufficient points. You have ${team.points} pts.` }, { status: 400 });
     }
 
-    const hasBid = auction.bids.some((b) => b.teamId === teamId);
-    if (hasBid) {
-      return NextResponse.json({ error: 'Your team has already placed a bid for this question' }, { status: 400 });
+    const isTopBidder = auction.bids[0]?.teamId === teamId;
+    if (isTopBidder) {
+      return NextResponse.json({ error: 'Your team is already the highest bidder!' }, { status: 400 });
     }
 
     const currentHighest = auction.bids[0]?.amount || auction.question.basePoints;

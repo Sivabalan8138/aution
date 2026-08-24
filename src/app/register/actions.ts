@@ -3,6 +3,7 @@
 import prisma from '@/lib/db';
 import { z } from 'zod';
 import { cookies } from 'next/headers';
+import { SignJWT } from 'jose';
 
 const registerSchema = z.object({
   teamName: z.string().min(2, 'Team Name must be at least 2 characters'),
@@ -38,16 +39,24 @@ export async function registerTeam(formData: FormData) {
     const team = await prisma.team.create({
       data: {
         ...validatedData,
+        phone: validatedData.phone || 'N/A',
         registrationNumber: regNumber,
         points: 5000,
         status: 'ACTIVE',
       },
     });
 
-    const cookieStore = await cookies();
-    cookieStore.set('team_token', team.id, { path: '/', httpOnly: false });
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'secret');
+    const token = await new SignJWT({ role: 'team', teamId: team.id, teamName: team.teamName })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setExpirationTime('12h')
+      .sign(secret);
 
-    return { success: true, team };
+    const cookieStore = await cookies();
+    cookieStore.set('team_token', token, { path: '/', httpOnly: true, secure: process.env.NODE_ENV === 'production', maxAge: 60 * 60 * 12 });
+
+    return { success: true, team, token };
   } catch (error) {
     if (error instanceof z.ZodError) {
       const message = error.issues?.[0]?.message || 'Validation failed';

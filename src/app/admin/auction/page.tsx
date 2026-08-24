@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Gavel, Play, Square, Check, X, Timer, SkipForward, 
   RefreshCw, ChevronUp, AlertTriangle, Ban, Trophy,
-  Zap, Users
+  Zap, Users, Plus
 } from 'lucide-react';
 import { getSocket } from '@/lib/socket';
 
@@ -247,17 +247,37 @@ export default function AdminAuctionPage() {
 
   const handleAnswer = (result: 'CORRECT' | 'WRONG') => {
     const winnerTeam = currentAuction?.winnerTeam || teams.find(t => t.id === currentAuction?.winnerTeamId);
+    
+    // Check if next bidder exists in case of wrong answer
+    const failedTeamIds = new Set(
+      (currentAuction as any)?.scoreTx
+        ?.filter((st: any) => st.type === 'AUCTION_LOSS')
+        .map((st: any) => st.teamId) || []
+    );
+    if (currentAuction?.winnerTeamId) failedTeamIds.add(currentAuction.winnerTeamId);
+
+    const nextBid = currentAuction?.bids?.find((b: Bid) => !failedTeamIds.has(b.teamId));
+
+    let confirmDescription = '';
+    if (result === 'CORRECT') {
+      confirmDescription = `Award ${currentAuction?.winningBid} pts to ${winnerTeam?.teamName}. This will add points to their score and complete the auction.`;
+    } else {
+      if (nextBid) {
+        confirmDescription = `Deduct ${currentAuction?.winningBid} pts from ${winnerTeam?.teamName}. The question will automatically pass to the NEXT HIGHEST BIDDER: ${nextBid.team?.teamName} for ${nextBid.amount} pts.`;
+      } else {
+        confirmDescription = `Deduct ${currentAuction?.winningBid} pts from ${winnerTeam?.teamName}. Since there are no more bidders, this auction will be completed.`;
+      }
+    }
+
     showConfirm({
       title: result === 'CORRECT' ? '✅ Mark as Correct' : '❌ Mark as Incorrect',
-      description: result === 'CORRECT'
-        ? `Award ${currentAuction?.winningBid} pts to ${winnerTeam?.teamName}. This will add points to their score.`
-        : `Deduct ${currentAuction?.winningBid} pts from ${winnerTeam?.teamName}. This cannot be undone.`,
-      confirmLabel: result === 'CORRECT' ? 'Confirm Correct' : 'Confirm Wrong',
+      description: confirmDescription,
+      confirmLabel: result === 'CORRECT' ? 'Confirm Correct' : (nextBid ? 'Deduct & Move to Next Bidder' : 'Confirm Wrong'),
       confirmClass: result === 'CORRECT' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white',
       onConfirm: async () => {
         setLoadingAction('resolve');
         try {
-          await fetch('/api/admin/auction', {
+          const res = await fetch('/api/admin/auction', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -265,9 +285,16 @@ export default function AdminAuctionPage() {
               payload: { auctionId: currentAuction!.id, result, teamId: currentAuction!.winnerTeamId, amount: currentAuction!.winningBid }
             })
           });
-          setCurrentAuction(null);
-          loadData();
-          showToast(result === 'CORRECT' ? 'Correct! Points awarded.' : 'Wrong! Points deducted.', result === 'CORRECT' ? 'success' : 'error');
+          const data = await res.json();
+          if (data.hasNextBidder) {
+            setCurrentAuction(data.updatedAuction);
+            loadData();
+            showToast(`Wrong answer! Deducted ${currentAuction?.winningBid} pts. Turn moved to ${data.nextBid?.team?.teamName || 'next bidder'} (${data.nextBid?.amount} pts).`, 'error');
+          } else {
+            setCurrentAuction(null);
+            loadData();
+            showToast(result === 'CORRECT' ? 'Correct! Points awarded.' : 'Wrong! Points deducted. Auction completed.', result === 'CORRECT' ? 'success' : 'error');
+          }
         } finally {
           setLoadingAction(null);
         }
@@ -652,15 +679,32 @@ export default function AdminAuctionPage() {
               {currentAuction.bids?.length === 0 ? (
                 <p className="text-center text-gray-600 text-sm py-4">No bids yet.</p>
               ) : (
-                currentAuction.bids?.map((bid: Bid, idx: number) => (
-                  <div key={bid.id} className={`flex justify-between items-center text-sm p-2.5 rounded border ${idx === 0 ? 'bg-yellow-500/10 border-yellow-500/20' : 'bg-white/5 border-white/5'}`}>
-                    <div>
-                      {idx === 0 && <ChevronUp className="h-3.5 w-3.5 text-yellow-400 inline mr-1" />}
-                      <span className={`font-bold ${idx === 0 ? 'text-yellow-300' : 'text-gray-300'}`}>{bid.team?.teamName}</span>
+                currentAuction.bids?.map((bid: Bid, idx: number) => {
+                  const isCurrentAnswering = currentAuction.status === 'CLOSED' && bid.teamId === currentAuction.winnerTeamId;
+                  const isFailed = (currentAuction as any)?.scoreTx?.some((st: any) => st.teamId === bid.teamId && st.type === 'AUCTION_LOSS');
+                  
+                  return (
+                    <div key={bid.id} className={`flex justify-between items-center text-sm p-2.5 rounded border ${
+                      isCurrentAnswering ? 'bg-yellow-500/20 border-yellow-500/40 ring-1 ring-yellow-500/30' :
+                      isFailed ? 'bg-red-950/20 border-red-500/20 opacity-75' :
+                      idx === 0 ? 'bg-yellow-500/10 border-yellow-500/20' : 'bg-white/5 border-white/5'
+                    }`}>
+                      <div>
+                        {isCurrentAnswering && <span className="text-yellow-400 font-bold mr-1">🎯</span>}
+                        {isFailed && <span className="text-red-400 font-bold mr-1">❌</span>}
+                        {!isCurrentAnswering && !isFailed && idx === 0 && <ChevronUp className="h-3.5 w-3.5 text-yellow-400 inline mr-1" />}
+                        <span className={`font-bold ${isCurrentAnswering ? 'text-yellow-300' : isFailed ? 'text-red-300 line-through' : idx === 0 ? 'text-yellow-300' : 'text-gray-300'}`}>
+                          {bid.team?.teamName}
+                        </span>
+                        {isFailed && <span className="ml-1 text-[10px] uppercase font-mono text-red-400 font-semibold">(Wrong)</span>}
+                        {isCurrentAnswering && <span className="ml-1 text-[10px] uppercase font-mono text-yellow-400 font-semibold">(Answering)</span>}
+                      </div>
+                      <span className={`font-mono font-bold ${isCurrentAnswering ? 'text-yellow-400' : isFailed ? 'text-red-400' : idx === 0 ? 'text-yellow-400' : 'text-gray-400'}`}>
+                        {bid.amount} pts
+                      </span>
                     </div>
-                    <span className={`font-mono font-bold ${idx === 0 ? 'text-yellow-400' : 'text-gray-400'}`}>{bid.amount} pts</span>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
