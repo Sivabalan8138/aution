@@ -131,12 +131,14 @@ export default function AdminAuctionPage() {
 
   useEffect(() => {
     loadData();
+    const interval = setInterval(loadData, 2000);
     const socket = getSocket();
     socket.emit('join_room', 'admin');
     socket.on('bid_placed', () => {
       fetch('/api/admin/auction').then(r => r.json()).then(setCurrentAuction);
     });
     return () => {
+      clearInterval(interval);
       socket.off('bid_placed');
     };
   }, [loadData]);

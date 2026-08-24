@@ -4,7 +4,11 @@ let socket: Socket | null = null;
 
 export const initSocket = () => {
   if (!socket) {
-    socket = io();
+    socket = io({
+      autoConnect: true,
+      reconnectionAttempts: 3,
+      timeout: 3000,
+    });
   }
   return socket;
 };

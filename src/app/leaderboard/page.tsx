@@ -31,6 +31,7 @@ export default function LeaderboardPage() {
 
   useEffect(() => {
     fetchLeaderboard();
+    const interval = setInterval(fetchLeaderboard, 3000);
 
     // Set up Socket.io connection for real-time updates
     const socket = getSocket();
@@ -46,6 +47,7 @@ export default function LeaderboardPage() {
     });
 
     return () => {
+      clearInterval(interval);
       socket.off('leaderboard_updated');
       socket.off('score_updated');
     };
