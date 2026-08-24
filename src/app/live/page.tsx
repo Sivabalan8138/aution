@@ -59,6 +59,8 @@ export default function LiveScreenPage() {
 
   useEffect(() => {
     fetchAuction();
+    const interval = setInterval(fetchAuction, 2000);
+
     const socket = getSocket();
     socket.emit('join_room', 'public');
 
@@ -100,6 +102,7 @@ export default function LiveScreenPage() {
     });
 
     return () => {
+      clearInterval(interval);
       socket.off('auction_started');
       socket.off('bid_placed');
       socket.off('timer_tick');
