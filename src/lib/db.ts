@@ -1,8 +1,49 @@
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
+import { PrismaPg } from '@prisma/adapter-pg';
+import pg from 'pg';
+import path from 'path';
+import fs from 'fs';
 
-const adapter = new PrismaBetterSqlite3({ url: process.env.DATABASE_URL || 'file:./dev.db' });
+function getAdapter() {
+  const dbUrl = process.env.DATABASE_URL || 'file:./dev.db';
+
+  if (dbUrl.startsWith('postgres://') || dbUrl.startsWith('postgresql://')) {
+    const pool = new pg.Pool({ connectionString: dbUrl });
+    return new PrismaPg(pool);
+  }
+
+  // SQLite Adapter Logic
+  let dbPath = dbUrl.replace(/^file:/, '');
+
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    const tmpDbPath = '/tmp/dev.db';
+    if (!fs.existsSync(/*turbopackIgnore: true*/ tmpDbPath)) {
+      const candidates = [
+        path.join(/*turbopackIgnore: true*/ process.cwd(), 'prisma', 'dev.db'),
+        path.join(/*turbopackIgnore: true*/ process.cwd(), 'dev.db'),
+      ];
+
+      for (const src of candidates) {
+        if (fs.existsSync(/*turbopackIgnore: true*/ src)) {
+          try {
+            fs.copyFileSync(src, tmpDbPath);
+            console.log(`Copied database from ${src} to ${tmpDbPath}`);
+            break;
+          } catch (e) {
+            console.error('Failed to copy db to /tmp:', e);
+          }
+        }
+      }
+    }
+    dbPath = tmpDbPath;
+  } else if (!path.isAbsolute(dbPath)) {
+    dbPath = path.join(/*turbopackIgnore: true*/ process.cwd(), dbPath);
+  }
+
+  return new PrismaBetterSqlite3({ url: `file:${dbPath}` });
+}
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -12,10 +53,10 @@ let prisma: PrismaClient;
 
 if (typeof window === "undefined") {
   if (process.env.NODE_ENV === 'production') {
-    prisma = new PrismaClient({ adapter });
+    prisma = new PrismaClient({ adapter: getAdapter() });
   } else {
     if (!globalForPrisma.prisma) {
-      globalForPrisma.prisma = new PrismaClient({ adapter });
+      globalForPrisma.prisma = new PrismaClient({ adapter: getAdapter() });
     }
     prisma = globalForPrisma.prisma;
   }
