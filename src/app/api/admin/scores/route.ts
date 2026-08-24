@@ -50,7 +50,7 @@ export async function GET(request: Request) {
 
     // Client-side text filter if search parameter provided
     const filtered = search
-      ? transactions.filter(t => 
+      ? transactions.filter((t: any) => 
           t.team?.teamName.toLowerCase().includes(search) ||
           t.team?.registrationNumber.toLowerCase().includes(search) ||
           t.reason?.toLowerCase().includes(search) ||

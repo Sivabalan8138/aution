@@ -5,7 +5,7 @@ export async function generateNextRegistrationNumber(): Promise<string> {
     select: { registrationNumber: true }
   });
 
-  const existingNumbers = new Set(teams.map(t => t.registrationNumber));
+  const existingNumbers = new Set(teams.map((t: { registrationNumber: string }) => t.registrationNumber));
 
   let maxNum = 0;
   for (const t of teams) {

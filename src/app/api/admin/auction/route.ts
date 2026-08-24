@@ -134,12 +134,12 @@ export async function POST(request: Request) {
       // Find all team IDs that have already lost/attempted in this auction
       const failedTeamIds = new Set(
         auctionData?.scoreTx
-          ?.filter(st => st.type === 'AUCTION_LOSS')
-          .map(st => st.teamId) || []
+          ?.filter((st: any) => st.type === 'AUCTION_LOSS')
+          .map((st: any) => st.teamId) || []
       );
 
       // Find next highest bid from a team that hasn't attempted yet
-      const nextBid = auctionData?.bids.find(b => !failedTeamIds.has(b.teamId));
+      const nextBid = auctionData?.bids.find((b: any) => !failedTeamIds.has(b.teamId));
 
       let updatedAuction;
       let hasNextBidder = false;

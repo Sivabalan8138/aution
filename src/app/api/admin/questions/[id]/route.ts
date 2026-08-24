@@ -33,7 +33,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       where: { questionId: id },
       select: { id: true }
     });
-    const auctionIds = auctions.map(a => a.id);
+    const auctionIds = auctions.map((a: any) => a.id);
 
     if (auctionIds.length > 0) {
       // Set auctionId to null in ScoreTransaction for these auctions

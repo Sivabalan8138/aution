@@ -147,7 +147,7 @@ export default async function AdminDashboard() {
             {topTeams.length === 0 ? (
               <div className="text-sm text-gray-500 text-center py-6">No teams registered yet.</div>
             ) : (
-              topTeams.map((team, index) => (
+              topTeams.map((team: any, index: number) => (
                 <div key={team.id} className="flex items-center gap-3 p-3 bg-white/[0.02] rounded-lg group hover:bg-white/[0.05] transition-colors">
                   <div className={`h-8 w-8 flex-shrink-0 rounded-full flex items-center justify-center font-mono font-bold text-sm border ${
                     index === 0 ? 'border-yellow-500/50 text-yellow-400 bg-yellow-500/10' :
@@ -185,7 +185,7 @@ export default async function AdminDashboard() {
                 No activity yet. System standing by.
               </div>
             ) : (
-              recentActivities.map((tx) => (
+              recentActivities.map((tx: any) => (
                 <div key={tx.id} className="flex items-center gap-3 p-2.5 bg-white/[0.02] rounded-lg hover:bg-white/[0.05] transition-colors">
                   <div className="flex-shrink-0">
                     {txTypeIcon(tx.type)}

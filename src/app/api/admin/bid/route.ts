@@ -26,7 +26,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Team does not have enough points' }, { status: 400 });
     }
 
-    const hasBid = auction.bids.some(b => b.teamId === teamId);
+    const hasBid = auction.bids.some((b: any) => b.teamId === teamId);
     if (hasBid) {
       return NextResponse.json({ error: 'Team has already placed a bid for this question' }, { status: 400 });
     }

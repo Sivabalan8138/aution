@@ -39,7 +39,7 @@ export async function GET(request: Request) {
     });
 
     const filtered = search
-      ? auctions.filter(a =>
+      ? auctions.filter((a: any) =>
           a.question?.text.toLowerCase().includes(search) ||
           a.question?.category?.toLowerCase().includes(search) ||
           a.winnerTeam?.teamName.toLowerCase().includes(search) ||
