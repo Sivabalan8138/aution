@@ -4,6 +4,7 @@ import prisma from '@/lib/db';
 import { z } from 'zod';
 import { cookies } from 'next/headers';
 import { SignJWT } from 'jose';
+import { generateNextRegistrationNumber } from '@/lib/team-utils';
 
 const registerSchema = z.object({
   teamName: z.string().min(2, 'Team Name must be at least 2 characters'),
@@ -29,19 +30,18 @@ export async function registerTeam(formData: FormData) {
 
     const validatedData = registerSchema.parse(data);
 
-    // Generate Registration Number (e.g., REG-001)
-    // For concurrency safety, normally we'd use a sequence or UUID, but requirement says REG-XXX.
-    // In a high concurrency environment, we'd do this in a transaction or use a sequence.
-    // We'll count existing teams to generate the next number.
-    const count = await prisma.team.count();
-    const regNumber = `REG-${(count + 1).toString().padStart(3, '0')}`;
+    // Fetch initial points setting if configured
+    const settings = await prisma.eventSettings.findFirst();
+    const initialPoints = settings?.initialPoints || 5000;
+
+    const regNumber = await generateNextRegistrationNumber();
 
     const team = await prisma.team.create({
       data: {
         ...validatedData,
         phone: validatedData.phone || 'N/A',
         registrationNumber: regNumber,
-        points: 5000,
+        points: initialPoints,
         status: 'ACTIVE',
       },
     });
@@ -53,16 +53,31 @@ export async function registerTeam(formData: FormData) {
       .setExpirationTime('12h')
       .sign(secret);
 
-    const cookieStore = await cookies();
-    cookieStore.set('team_token', token, { path: '/', httpOnly: true, secure: process.env.NODE_ENV === 'production', maxAge: 60 * 60 * 12 });
+    try {
+      const cookieStore = await cookies();
+      cookieStore.set('team_token', token, { path: '/', httpOnly: true, secure: process.env.NODE_ENV === 'production', maxAge: 60 * 60 * 12 });
+    } catch (cookieErr) {
+      console.warn('Could not set cookie directly in action:', cookieErr);
+    }
 
     return { success: true, team, token };
-  } catch (error) {
+  } catch (error: any) {
     if (error instanceof z.ZodError) {
       const message = error.issues?.[0]?.message || 'Validation failed';
       return { success: false, error: message };
     }
+
+    if (error?.code === 'P2002') {
+      const target = error.meta?.target;
+      if (Array.isArray(target) && target.includes('email')) {
+        return { success: false, error: 'A team with this email address is already registered.' };
+      }
+      if (Array.isArray(target) && target.includes('teamName')) {
+        return { success: false, error: 'A team with this Team Name already exists.' };
+      }
+    }
+
     console.error('Registration error:', error);
-    return { success: false, error: 'Registration failed. Please try again.' };
+    return { success: false, error: error?.message || 'Registration failed. Please try again.' };
   }
 }

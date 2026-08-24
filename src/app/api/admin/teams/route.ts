@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
+import { generateNextRegistrationNumber } from '@/lib/team-utils';
 
 export async function GET() {
   try {
@@ -81,8 +82,7 @@ export async function POST(request: Request) {
     const initialPoints = data.points !== undefined ? Number(data.points) : (settings?.initialPoints || 5000);
 
     // Generate Registration Number
-    const count = await prisma.team.count();
-    const regNumber = `REG-${(count + 1).toString().padStart(3, '0')}`;
+    const regNumber = await generateNextRegistrationNumber();
 
     const newTeam = await prisma.team.create({
       data: {
