@@ -174,7 +174,7 @@ export default function TeamBidPage() {
     window.location.href = '/team/login';
   };
 
-  const currentHighestBid = auction?.bids?.[0]?.amount || auction?.question?.basePoints || 0;
+  const basePoints = auction?.question?.basePoints || 0;
   const myBid = auction?.bids?.find(b => b?.team?.id === team?.id);
 
   const difficultyColor = (d: string) =>
@@ -286,25 +286,13 @@ export default function TeamBidPage() {
               <p className="text-xl md:text-2xl font-medium leading-relaxed">{auction.question?.text}</p>
             </div>
 
-            {/* Current Highest Bid */}
-            <div className="glass-card p-5 border border-white/5 flex items-center justify-between">
-              <div>
-                <div className="text-xs text-gray-400 uppercase tracking-widest mb-1">Highest Bid</div>
-                <div className="text-4xl font-mono font-black text-primary">{currentHighestBid}</div>
-                {auction?.bids?.[0]?.team?.teamName && (
-                  <div className="text-sm text-gray-300 mt-1">by {auction.bids[0].team.teamName}</div>
-                )}
-              </div>
-              <TrendingUp className="h-10 w-10 text-primary/30" />
-            </div>
+
 
             {/* Already Bid? Show badge */}
             {hasAlreadyBid && myBid && (
               <div className="bg-green-500/10 border border-green-500/30 text-green-400 p-4 rounded text-center font-bold">
                 ✅ Your bid: <span className="font-mono text-xl">{myBid.amount}</span> pts placed!
-                {myBid.amount === currentHighestBid && (
-                  <div className="text-sm font-normal mt-1 text-green-300">🏆 You're currently the highest bidder!</div>
-                )}
+                <div className="text-sm font-normal mt-1 text-green-300">Wait for bidding to close to see if you won.</div>
               </div>
             )}
 
@@ -318,14 +306,14 @@ export default function TeamBidPage() {
             )}
 
             {/* Bid Controls — active when not top bidder */}
-            {!(myBid && myBid.amount === currentHighestBid) && (
+            {!hasAlreadyBid && (
               <div className="glass-card p-6 border border-white/5 space-y-4">
                 <h3 className="text-sm font-bold uppercase tracking-widest text-gray-300">Place Your Bid</h3>
 
                 {/* Quick bid buttons */}
                 <div className="grid grid-cols-4 gap-2">
-                  {[50, 100, 200, 500].map(inc => {
-                    const bidVal = currentHighestBid + inc;
+                  {[0, 50, 100, 200, 500].map(inc => {
+                    const bidVal = basePoints + inc;
                     const canAfford = team ? team.points >= bidVal : false;
                     return (
                       <button
@@ -334,7 +322,7 @@ export default function TeamBidPage() {
                         disabled={loading || !canAfford}
                         className="flex flex-col items-center py-3 bg-white/5 hover:bg-primary/20 hover:border-primary border border-white/10 rounded transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                       >
-                        <span className="text-xs text-gray-400">+{inc}</span>
+                        <span className="text-xs text-gray-400">{inc === 0 ? 'Base' : `+${inc}`}</span>
                         <span className="font-mono font-bold text-sm text-white">{bidVal}</span>
                       </button>
                     );
@@ -347,7 +335,7 @@ export default function TeamBidPage() {
                     type="number"
                     value={customBid}
                     onChange={(e) => setCustomBid(e.target.value)}
-                    placeholder={`Min: ${currentHighestBid + 1}`}
+                    placeholder={`Min: ${basePoints}`}
                     className="flex-1 bg-black/60 border border-white/10 px-4 py-3 focus:outline-none focus:border-primary text-white font-mono rounded"
                   />
                   <button

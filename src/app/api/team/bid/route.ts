@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     const auction = await prisma.auction.findUnique({
       where: { id: auctionId },
       include: {
-        bids: { orderBy: { amount: 'desc' } },
+        bids: { orderBy: [{ amount: 'desc' }, { team: { points: 'desc' } }, { createdAt: 'asc' }] },
         question: true,
       },
     });
@@ -70,15 +70,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Insufficient points. You have ${team.points} pts.` }, { status: 400 });
     }
 
-    const isTopBidder = auction.bids[0]?.teamId === teamId;
-    if (isTopBidder) {
-      return NextResponse.json({ error: 'Your team is already the highest bidder!' }, { status: 400 });
+    const hasBid = auction.bids.some(b => b.teamId === teamId);
+    if (hasBid) {
+      return NextResponse.json({ error: 'Your team has already placed a bid!' }, { status: 400 });
     }
 
-    const currentHighest = auction.bids[0]?.amount || auction.question.basePoints;
-    if (bidAmount <= currentHighest) {
+    if (bidAmount < auction.question.basePoints) {
       return NextResponse.json({
-        error: `Bid must be higher than current highest bid of ${currentHighest}`,
+        error: `Bid must be at least the base points of ${auction.question.basePoints}`,
       }, { status: 400 });
     }
 

@@ -4,10 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "prisma generate && next build",
+    "build": "node scripts/prepare-prisma.js && prisma generate && next build",
     "start": "NODE_ENV=production tsx server.ts",
     "lint": "eslint",
-    "postinstall": "prisma generate"
+    "postinstall": "node scripts/prepare-prisma.js && prisma generate"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.9.1",
@@ -25,6 +25,8 @@
     "react-dom": "19.2.8",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
+    "tsx": "^4.23.12",
+    "typescript": "^6.0.3",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -36,8 +38,6 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.2",
-    "tailwindcss": "^4",
-    "tsx": "^4.23.12",
-    "typescript": "^5"
+    "tailwindcss": "^4"
   }
 }

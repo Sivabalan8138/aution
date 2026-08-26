@@ -67,6 +67,7 @@ export default function AdminAuctionPage() {
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const toastRef = useRef<NodeJS.Timeout | null>(null);
+  const lastAuctionIdRef = useRef<string | null>(null);
 
   // Quick Register States
   const [quickRegisterOpen, setQuickRegisterOpen] = useState(false);
@@ -123,8 +124,16 @@ export default function AdminAuctionPage() {
     if (aRes.ok) {
       const auction = await aRes.json();
       setCurrentAuction(auction);
-      if (auction?.question?.timeLimit && !timerRunning) {
-        setTimerSeconds(auction.question.timeLimit);
+      
+      // Only initialize the timer if this is a new auction we haven't seen yet
+      if (auction && auction.id !== lastAuctionIdRef.current) {
+        lastAuctionIdRef.current = auction.id;
+        if (auction.question?.timeLimit) {
+          setTimerSeconds(auction.question.timeLimit);
+          setTimerRunning(false);
+        }
+      } else if (!auction) {
+        lastAuctionIdRef.current = null;
       }
     }
   }, []);
@@ -145,22 +154,26 @@ export default function AdminAuctionPage() {
 
   // Timer logic
   useEffect(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (timerRunning && timerSeconds > 0) {
-      timerRef.current = setInterval(() => {
-        setTimerSeconds(s => {
-          const next = s - 1;
-          getSocket().emit('timer_tick', next);
-          return next;
-        });
-      }, 1000);
-    } else if (timerSeconds === 0 && timerRunning) {
-      setTimerRunning(false);
-    }
+    if (!timerRunning) return;
+    
+    timerRef.current = setInterval(() => {
+      setTimerSeconds(s => {
+        if (s <= 1) {
+          clearInterval(timerRef.current!);
+          setTimeout(() => setTimerRunning(false), 0);
+          getSocket().emit('timer_tick', 0);
+          return 0;
+        }
+        const next = s - 1;
+        getSocket().emit('timer_tick', next);
+        return next;
+      });
+    }, 1000);
+
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [timerRunning, timerSeconds]);
+  }, [timerRunning]);
 
   const handleStartAuction = async () => {
     if (!selectedQuestion) return showToast('Select a question first', 'error');
@@ -262,12 +275,12 @@ export default function AdminAuctionPage() {
 
     let confirmDescription = '';
     if (result === 'CORRECT') {
-      confirmDescription = `Award ${currentAuction?.winningBid} pts to ${winnerTeam?.teamName}. This will add points to their score and complete the auction.`;
+      confirmDescription = `Award ${currentAuction?.winningBid} pts to ${winnerTeam?.teamName}. All other teams that placed a bid will be PENALIZED 100 pts.`;
     } else {
       if (nextBid) {
-        confirmDescription = `Deduct ${currentAuction?.winningBid} pts from ${winnerTeam?.teamName}. The question will automatically pass to the NEXT HIGHEST BIDDER: ${nextBid.team?.teamName} for ${nextBid.amount} pts.`;
+        confirmDescription = `The turn will automatically pass to the NEXT HIGHEST BIDDER: ${nextBid.team?.teamName} for ${nextBid.amount} pts. (${winnerTeam?.teamName} has already lost ${currentAuction?.winningBid} pts).`;
       } else {
-        confirmDescription = `Deduct ${currentAuction?.winningBid} pts from ${winnerTeam?.teamName}. Since there are no more bidders, this auction will be completed.`;
+        confirmDescription = `Since there are no more bidders, this auction will be completed. (${winnerTeam?.teamName} has already lost ${currentAuction?.winningBid} pts).`;
       }
     }
 
@@ -291,7 +304,7 @@ export default function AdminAuctionPage() {
           if (data.hasNextBidder) {
             setCurrentAuction(data.updatedAuction);
             loadData();
-            showToast(`Wrong answer! Deducted ${currentAuction?.winningBid} pts. Turn moved to ${data.nextBid?.team?.teamName || 'next bidder'} (${data.nextBid?.amount} pts).`, 'error');
+            showToast(`Wrong answer! Turn moved to ${data.nextBid?.team?.teamName || 'next bidder'} (${data.nextBid?.amount} pts).`, 'error');
           } else {
             setCurrentAuction(null);
             loadData();
@@ -535,7 +548,16 @@ export default function AdminAuctionPage() {
                   >
                     {timerRunning ? <Square className="h-5 w-5" /> : <Play className="h-5 w-5" />}
                   </button>
-                  <button onClick={() => setTimerSeconds(currentAuction?.question?.timeLimit || 30)} className="p-3 bg-white/10 hover:bg-white/15 rounded-lg border border-white/10">
+                  <button 
+                    onClick={() => {
+                      const resetTime = currentAuction?.question?.timeLimit || 30;
+                      setTimerRunning(false);
+                      setTimerSeconds(resetTime);
+                      getSocket().emit('timer_tick', resetTime);
+                    }} 
+                    className="p-3 bg-white/10 hover:bg-white/15 rounded-lg border border-white/10"
+                    title="Reset Timer"
+                  >
                     <RefreshCw className="h-4 w-4" />
                   </button>
                 </div>

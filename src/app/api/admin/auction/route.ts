@@ -35,17 +35,62 @@ export async function POST(request: Request) {
     if (action === 'CLOSE_BIDDING') {
       const { auctionId, winnerTeamId, winningBid } = payload;
       
-      const updated = await prisma.auction.update({
+      const team = await prisma.team.findUnique({ where: { id: winnerTeamId } });
+      if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 });
+
+      // Identify all active teams that didn't bid
+      const auctionWithBids = await prisma.auction.findUnique({
         where: { id: auctionId },
-        data: {
-          status: 'CLOSED',
-          winnerTeamId,
-          winningBid
-        }
+        include: { bids: true }
       });
+      const allActiveTeams = await prisma.team.findMany({ where: { status: 'ACTIVE' } });
+      const biddingTeamIds = new Set(auctionWithBids?.bids.map((b: any) => b.teamId));
+      
+      const noBidTeams = allActiveTeams.filter(t => !biddingTeamIds.has(t.id));
+
+      const newPoints = Math.max(0, team.points - winningBid);
+
+      const noBidTeamUpdates = noBidTeams.map(t => 
+        prisma.team.update({
+          where: { id: t.id },
+          data: { points: Math.max(0, t.points - 500) }
+        })
+      );
+      
+      const noBidTeamTxs = noBidTeams.map(t => 
+        prisma.scoreTransaction.create({
+          data: {
+            teamId: t.id,
+            auctionId,
+            amount: 500,
+            type: 'AUCTION_LOSS',
+            previousPoints: t.points,
+            newPoints: Math.max(0, t.points - 500),
+            reason: `Penalty for not participating in auction (-500 pts)`
+          }
+        })
+      );
+
+      const [updated, updatedTeam, ...rest] = await prisma.$transaction([
+        prisma.auction.update({
+          where: { id: auctionId },
+          data: {
+            status: 'CLOSED',
+            winnerTeamId,
+            winningBid
+          }
+        }),
+        prisma.team.update({
+          where: { id: winnerTeamId },
+          data: { points: newPoints }
+        }),
+        ...noBidTeamUpdates,
+        ...noBidTeamTxs
+      ]);
 
       if ((global as any).io) {
         (global as any).io.emit('bidding_closed', updated);
+        (global as any).io.emit('score_updated'); // emit score update so penalized teams see their balance drop immediately
       }
 
       return NextResponse.json(updated);
@@ -59,9 +104,49 @@ export async function POST(request: Request) {
       if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 });
 
       if (result === 'CORRECT') {
-        const newPoints = team.points + amount;
+        // Points were deducted at CLOSE_BIDDING.
+        // Refund the wager (amount) AND add the winnings (amount) => net +amount from original.
+        const newPoints = team.points + (amount * 2);
         
-        const [updatedAuction, updatedTeam, tx] = await prisma.$transaction([
+        // Fetch the auction with its bids to know who participated
+        const auctionWithBids = await prisma.auction.findUnique({
+          where: { id: auctionId },
+          include: { bids: true }
+        });
+        const biddingTeamIds = Array.from(new Set(auctionWithBids?.bids.map((b: any) => b.teamId) || []));
+
+        // Find all other active teams that DID place a bid to penalize them 100 points
+        const otherTeams = await prisma.team.findMany({
+          where: { 
+            status: 'ACTIVE',
+            id: { 
+              in: biddingTeamIds.filter(id => id !== teamId)
+            } 
+          }
+        });
+
+        // Prepare bulk operations for other teams
+        const otherTeamUpdates = otherTeams.map(t => 
+          prisma.team.update({
+            where: { id: t.id },
+            data: { points: Math.max(0, t.points - 100) }
+          })
+        );
+        const otherTeamTxs = otherTeams.map(t =>
+          prisma.scoreTransaction.create({
+            data: {
+              teamId: t.id,
+              auctionId,
+              amount: 100,
+              type: 'AUCTION_LOSS',
+              previousPoints: t.points,
+              newPoints: Math.max(0, t.points - 100),
+              reason: `Another team answered correctly (100 pts penalty)`
+            }
+          })
+        );
+        
+        const [updatedAuction, updatedTeam, tx, ...rest] = await prisma.$transaction([
           prisma.auction.update({
             where: { id: auctionId },
             data: { status: 'COMPLETED', result: 'CORRECT' }
@@ -74,13 +159,15 @@ export async function POST(request: Request) {
             data: {
               teamId,
               auctionId,
-              amount,
+              amount: amount,
               type: 'AUCTION_WIN',
               previousPoints: team.points,
               newPoints: newPoints,
-              reason: `Auction win for ${amount} points (CORRECT)`
+              reason: `Auction win (Wager refunded + ${amount} pts won)`
             }
-          })
+          }),
+          ...otherTeamUpdates,
+          ...otherTeamTxs
         ]);
 
         if ((global as any).io) {
@@ -99,32 +186,33 @@ export async function POST(request: Request) {
       }
 
       // If result === 'WRONG'
-      const newPoints = Math.max(0, team.points - amount);
+      // Points were deducted at CLOSE_BIDDING.
+      // Net penalty is the full amount. So we don't refund anything.
+      const newPoints = team.points; // It's already been deducted at CLOSE_BIDDING
 
-      const [deductedTeam, lossTx] = await prisma.$transaction([
-        prisma.team.update({
-          where: { id: teamId },
-          data: { points: newPoints }
-        }),
+      const [lossTx] = await prisma.$transaction([
         prisma.scoreTransaction.create({
           data: {
             teamId,
             auctionId,
-            amount,
+            amount: amount,
             type: 'AUCTION_LOSS',
-            previousPoints: team.points,
+            previousPoints: team.points + amount, // It was deducted earlier, so visually show previous as +amount
             newPoints: newPoints,
-            reason: `Auction loss for ${amount} points (WRONG answer)`
+            reason: `Auction loss (WRONG answer, lost bid amount of ${amount})`
           }
         })
       ]);
+      
+      // Need to find the team again to get the deductedTeam data for emit
+      const finalDeductedTeam = await prisma.team.findUnique({ where: { id: teamId } });
 
       // Fetch auction with all bids ordered desc by amount and score transactions
       const auctionData = await prisma.auction.findUnique({
         where: { id: auctionId },
         include: {
           bids: {
-            orderBy: { amount: 'desc' },
+            orderBy: [{ amount: 'desc' }, { team: { points: 'desc' } }, { createdAt: 'asc' }],
             include: { team: true }
           },
           scoreTx: true
@@ -146,20 +234,38 @@ export async function POST(request: Request) {
 
       if (nextBid) {
         hasNextBidder = true;
-        updatedAuction = await prisma.auction.update({
-          where: { id: auctionId },
-          data: {
-            winnerTeamId: nextBid.teamId,
-            winningBid: nextBid.amount,
-            status: 'CLOSED', // remain CLOSED for next team answer
-          },
-          include: {
-            question: true,
-            bids: { include: { team: true }, orderBy: { amount: 'desc' } },
-            winnerTeam: true,
-            scoreTx: true
-          }
-        });
+        
+        const nextTeam = await prisma.team.findUnique({ where: { id: nextBid.teamId } });
+        const nextNewPoints = Math.max(0, (nextTeam?.points || 0) - nextBid.amount);
+
+        const [auctionUpdate, teamUpdate] = await prisma.$transaction([
+          prisma.auction.update({
+            where: { id: auctionId },
+            data: {
+              winnerTeamId: nextBid.teamId,
+              winningBid: nextBid.amount,
+              status: 'CLOSED', // remain CLOSED for next team answer
+            },
+            include: {
+              question: true,
+            bids: { 
+              include: { team: true }, 
+              orderBy: [
+                { amount: 'desc' },
+                { team: { points: 'desc' } },
+                { createdAt: 'asc' }
+              ] 
+            },
+              winnerTeam: true,
+              scoreTx: true
+            }
+          }),
+          prisma.team.update({
+            where: { id: nextBid.teamId },
+            data: { points: nextNewPoints }
+          })
+        ]);
+        updatedAuction = auctionUpdate;
       } else {
         updatedAuction = await prisma.auction.update({
           where: { id: auctionId },
@@ -169,7 +275,7 @@ export async function POST(request: Request) {
           },
           include: {
             question: true,
-            bids: { include: { team: true }, orderBy: { amount: 'desc' } },
+            bids: { include: { team: true }, orderBy: [{ amount: 'desc' }, { team: { points: 'desc' } }, { createdAt: 'asc' }] },
             winnerTeam: true,
             scoreTx: true
           }
@@ -179,8 +285,8 @@ export async function POST(request: Request) {
       if ((global as any).io) {
         (global as any).io.emit('answer_result', {
           result: 'WRONG',
-          team: deductedTeam,
-          amount,
+          team: finalDeductedTeam,
+          amount: amount,
           hasNextBidder,
           nextWinnerTeam: nextBid ? nextBid.team : null,
           nextWinningBid: nextBid ? nextBid.amount : null
@@ -192,7 +298,7 @@ export async function POST(request: Request) {
 
       return NextResponse.json({
         updatedAuction,
-        updatedTeam: deductedTeam,
+        updatedTeam: finalDeductedTeam,
         hasNextBidder,
         nextBid
       });
@@ -239,7 +345,11 @@ export async function GET() {
         question: true,
         bids: {
           include: { team: true },
-          orderBy: { amount: 'desc' }
+          orderBy: [
+            { amount: 'desc' },
+            { team: { points: 'desc' } },
+            { createdAt: 'asc' }
+          ]
         },
         winnerTeam: true,
         scoreTx: true
@@ -251,3 +361,4 @@ export async function GET() {
     return NextResponse.json({ error: 'Failed to fetch current auction' }, { status: 500 });
   }
 }
+export const dynamic = 'force-dynamic';

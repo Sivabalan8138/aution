@@ -8,7 +8,7 @@ export async function POST(request: Request) {
     const auction = await prisma.auction.findUnique({
       where: { id: auctionId },
       include: {
-        bids: { orderBy: { amount: 'desc' } },
+        bids: { orderBy: [{ amount: 'desc' }, { team: { points: 'desc' } }, { createdAt: 'asc' }] },
         question: true
       }
     });
@@ -31,9 +31,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Team has already placed a bid for this question' }, { status: 400 });
     }
 
-    const currentHighest = auction.bids[0]?.amount || auction.question.basePoints;
-    if (amount <= currentHighest) {
-      return NextResponse.json({ error: 'Bid must be higher than current bid' }, { status: 400 });
+    if (amount < auction.question.basePoints) {
+      return NextResponse.json({ error: `Bid must be at least the base points of ${auction.question.basePoints}` }, { status: 400 });
     }
 
     const newBid = await prisma.bid.create({

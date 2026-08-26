@@ -109,3 +109,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Failed to create team' }, { status: 500 });
   }
 }
+export const dynamic = 'force-dynamic';

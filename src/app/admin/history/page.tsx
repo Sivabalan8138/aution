@@ -10,7 +10,8 @@ import {
   Clock, 
   Trophy, 
   Gavel, 
-  Filter 
+  Filter,
+  Trash2
 } from 'lucide-react';
 
 interface AuctionRecord {
@@ -43,6 +44,27 @@ export default function AuctionHistoryPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [resultFilter, setResultFilter] = useState('ALL');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this auction record? This will also revert any points awarded or deducted during this round.')) {
+      return;
+    }
+    
+    try {
+      setDeletingId(id);
+      const res = await fetch(`/api/admin/history/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setHistory(prev => prev.filter(h => h.id !== id));
+      } else {
+        alert('Failed to delete auction record');
+      }
+    } catch (error) {
+      alert('Error deleting auction record');
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const fetchHistory = async () => {
     try {
@@ -71,7 +93,9 @@ export default function AuctionHistoryPage() {
   const totalCompleted = history.length;
   const correctCount = history.filter(h => h.result === 'CORRECT').length;
   const incorrectCount = history.filter(h => h.result === 'WRONG').length;
-  const totalWinningBids = history.reduce((acc, h) => acc + (h.winningBid || 0), 0);
+  const totalWinningBids = history.reduce((acc, h) => {
+    return acc + (h.result === 'CORRECT' && h.winnerTeam ? (h.winningBid || 0) : 0);
+  }, 0);
 
   const formatDate = (isoString: string) => {
     try {
@@ -219,19 +243,20 @@ export default function AuctionHistoryPage() {
               <th className="px-6 py-4 border-b border-white/5 text-right">Winning Bid</th>
               <th className="px-6 py-4 border-b border-white/5 text-center">Bids Count</th>
               <th className="px-6 py-4 border-b border-white/5 text-right">Outcome</th>
+              <th className="px-6 py-4 border-b border-white/5 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
             {loading ? (
               <tr>
-                <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
                   <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-purple-400" />
                   Loading auction history...
                 </td>
               </tr>
             ) : filteredHistory.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
                   No completed auctions match your criteria.
                 </td>
               </tr>
@@ -273,7 +298,7 @@ export default function AuctionHistoryPage() {
 
                   {/* Winner Team */}
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {item.winnerTeam ? (
+                    {item.result === 'CORRECT' && item.winnerTeam ? (
                       <div>
                         <div className="font-bold text-white">{item.winnerTeam.teamName}</div>
                         <div className="text-xs text-gray-500 font-mono">Reg #: {item.winnerTeam.registrationNumber}</div>
@@ -285,7 +310,7 @@ export default function AuctionHistoryPage() {
 
                   {/* Winning Bid */}
                   <td className="px-6 py-4 text-right whitespace-nowrap font-mono font-bold text-base text-purple-300">
-                    {item.winningBid ? `${item.winningBid} pts` : '-'}
+                    {item.result === 'CORRECT' && item.winnerTeam && item.winningBid ? `${item.winningBid} pts` : '-'}
                   </td>
 
                   {/* Total Bids */}
@@ -298,6 +323,18 @@ export default function AuctionHistoryPage() {
                   {/* Result */}
                   <td className="px-6 py-4 text-right whitespace-nowrap">
                     {getResultBadge(item.result)}
+                  </td>
+
+                  {/* Actions */}
+                  <td className="px-6 py-4 text-right whitespace-nowrap">
+                    <button
+                      onClick={() => handleDelete(item.id)}
+                      disabled={deletingId === item.id}
+                      className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded transition-colors disabled:opacity-50"
+                      title="Delete Record"
+                    >
+                      {deletingId === item.id ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                    </button>
                   </td>
                 </tr>
               ))

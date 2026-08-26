@@ -40,6 +40,11 @@ app.prepare().then(() => {
     socket.on('disconnect', () => {
       console.log('Client disconnected:', socket.id);
     });
+
+    // Broadcast timer tick from admin to all other clients
+    socket.on('timer_tick', (t) => {
+      socket.broadcast.emit('timer_tick', t);
+    });
   });
 
   // Make io accessible globally for API routes or other server-side logic if needed
