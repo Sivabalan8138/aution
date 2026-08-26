@@ -8,14 +8,26 @@ function getAdapter() {
   if (!dbUrl || dbUrl.startsWith('file:')) {
     // Provide a dummy postgres URL for Next.js build step if they haven't set the real one yet
     dbUrl = 'postgresql://postgres:postgres@localhost:5432/dummy';
-  } else {
-    // Append uselibpqcompat=true to fix the pg SSL mode warning in Vercel logs
-    if (dbUrl.includes('sslmode=require') && !dbUrl.includes('uselibpqcompat=true')) {
-      dbUrl += '&uselibpqcompat=true';
-    }
   }
   
-  const pool = new pg.Pool({ connectionString: dbUrl });
+  let poolConfig: pg.PoolConfig = {};
+  
+  if (dbUrl) {
+    if (dbUrl.includes('sslmode=require')) {
+      // Completely remove sslmode from string to prevent pg-connection-string warnings
+      try {
+        const url = new URL(dbUrl);
+        url.searchParams.delete('sslmode');
+        dbUrl = url.toString();
+        poolConfig.ssl = { rejectUnauthorized: false };
+      } catch (e) {
+        // Ignored
+      }
+    }
+    poolConfig.connectionString = dbUrl;
+  }
+  
+  const pool = new pg.Pool(poolConfig);
   return new PrismaPg(pool);
 }
 
