@@ -9,9 +9,9 @@ function getAdapter() {
     // Provide a dummy postgres URL for Next.js build step if they haven't set the real one yet
     dbUrl = 'postgresql://postgres:postgres@localhost:5432/dummy';
   } else {
-    // Append uselibpqcompat=true to fix the pg SSL mode warning in Vercel logs
-    if (dbUrl.includes('sslmode=require') && !dbUrl.includes('uselibpqcompat=true')) {
-      dbUrl += '&uselibpqcompat=true';
+    // Replace sslmode=require with sslmode=verify-full to permanently fix the pg SSL mode warning in Vercel logs
+    if (dbUrl.includes('sslmode=require')) {
+      dbUrl = dbUrl.replace('sslmode=require', 'sslmode=verify-full');
     }
   }
   
