@@ -4,14 +4,14 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
 
 function getAdapter() {
-  const dbUrl = process.env.DATABASE_URL;
-  
-  if (dbUrl && (dbUrl.startsWith('postgres://') || dbUrl.startsWith('postgresql://'))) {
-    const pool = new pg.Pool({ connectionString: dbUrl });
-    return new PrismaPg(pool);
+  let dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl || dbUrl.startsWith('file:')) {
+    // Provide a dummy postgres URL for Next.js build step if they haven't set the real one yet
+    dbUrl = 'postgresql://postgres:postgres@localhost:5432/dummy';
   }
   
-  return undefined;
+  const pool = new pg.Pool({ connectionString: dbUrl });
+  return new PrismaPg(pool);
 }
 
 const globalForPrisma = globalThis as unknown as {
