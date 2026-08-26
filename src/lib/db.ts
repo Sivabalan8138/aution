@@ -10,24 +10,12 @@ function getAdapter() {
     dbUrl = 'postgresql://postgres:postgres@localhost:5432/dummy';
   }
   
-  let poolConfig: pg.PoolConfig = {};
-  
-  if (dbUrl) {
-    if (dbUrl.includes('sslmode=require')) {
-      // Completely remove sslmode from string to prevent pg-connection-string warnings
-      try {
-        const url = new URL(dbUrl);
-        url.searchParams.delete('sslmode');
-        dbUrl = url.toString();
-        poolConfig.ssl = { rejectUnauthorized: false };
-      } catch (e) {
-        // Ignored
-      }
-    }
-    poolConfig.connectionString = dbUrl;
+  if (dbUrl && dbUrl.includes('sslmode=require')) {
+    // Replace sslmode=require with ssl=true to enable SSL without triggering pg-connection-string warnings
+    dbUrl = dbUrl.replace('sslmode=require', 'ssl=true');
   }
   
-  const pool = new pg.Pool(poolConfig);
+  const pool = new pg.Pool({ connectionString: dbUrl });
   return new PrismaPg(pool);
 }
 
