@@ -8,7 +8,7 @@ export async function GET() {
     if (!settings) {
       settings = await prisma.eventSettings.create({
         data: {
-          eventName: 'ELECTROBIT | THE EEE AUCTION CHALLENGE',
+          eventName: 'ELECTROBID | THE EEE AUCTION CHALLENGE',
           eventStatus: 'WAITING',
           initialPoints: 5000,
           minBidIncrement: 100,
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     let settings = await prisma.eventSettings.findFirst();
 
     const updatePayload = {
-      eventName: data.eventName || 'ELECTROBIT | THE EEE AUCTION CHALLENGE',
+      eventName: data.eventName || 'ELECTROBID | THE EEE AUCTION CHALLENGE',
       eventStatus: data.eventStatus || 'WAITING',
       initialPoints: Number(data.initialPoints) || 5000,
       minBidIncrement: Number(data.minBidIncrement) || 100,

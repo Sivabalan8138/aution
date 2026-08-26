@@ -32,7 +32,7 @@ interface EventSettingsData {
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<EventSettingsData>({
-    eventName: 'ELECTROBIT | THE EEE AUCTION CHALLENGE',
+    eventName: 'ELECTROBID | THE EEE AUCTION CHALLENGE',
     eventStatus: 'WAITING',
     initialPoints: 5000,
     minBidIncrement: 100,

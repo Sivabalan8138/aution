@@ -135,7 +135,7 @@ export default function LiveScreenPage() {
           </div>
           <h1 className="text-7xl md:text-9xl font-black tracking-tighter uppercase mb-4"
             style={{ background: 'linear-gradient(135deg, #00e5ff 0%, #ff00ea 50%, #f0f000 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            ELECTROBIT
+            ELECTROBID
           </h1>
           <p className="text-2xl md:text-3xl text-gray-500 tracking-[0.3em] uppercase font-mono mb-12">
             THE EEE AUCTION CHALLENGE
@@ -177,7 +177,7 @@ export default function LiveScreenPage() {
       <header className="flex items-center justify-between px-10 py-6 border-b border-white/5 relative z-10">
         <div className="flex items-center gap-3">
           <Zap className="h-8 w-8 text-cyan-400" style={{ filter: 'drop-shadow(0 0 8px rgba(0,229,255,0.6))' }} />
-          <span className="text-2xl font-black tracking-widest text-white">ELECTROBIT</span>
+          <span className="text-2xl font-black tracking-widest text-white">ELECTROBID</span>
         </div>
 
         <div className="flex items-center gap-4">

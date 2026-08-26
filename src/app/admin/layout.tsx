@@ -66,7 +66,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Zap className="h-5 w-5 text-red-500" />
           </div>
           <div>
-            <div className="font-black tracking-widest text-sm text-white">ELECTROBIT</div>
+            <div className="font-black tracking-widest text-sm text-white">ELECTROBID</div>
             <div className="text-[10px] text-red-500/80 font-mono tracking-widest uppercase">Admin Panel</div>
           </div>
         </div>

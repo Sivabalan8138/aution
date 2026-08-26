@@ -68,7 +68,7 @@ export default async function AdminDashboard() {
           <Zap className="h-7 w-7 text-red-500" />
           <div>
             <div className="text-xs text-gray-500 font-mono uppercase tracking-widest">Event Status</div>
-            <div className="text-lg font-bold text-white">{eventSettings?.eventName || 'ELECTROBIT'}</div>
+            <div className="text-lg font-bold text-white">{eventSettings?.eventName || 'ELECTROBID'}</div>
           </div>
         </div>
         <div className="flex items-center gap-3">

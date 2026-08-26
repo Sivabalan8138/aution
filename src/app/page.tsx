@@ -12,7 +12,7 @@ export default function Home() {
             <div className="h-8 w-8 bg-cyan-500/15 rounded-lg flex items-center justify-center border border-cyan-500/20">
               <Zap className="h-4 w-4 text-cyan-400" />
             </div>
-            <span className="font-black tracking-widest text-sm text-white">ELECTROBIT</span>
+            <span className="font-black tracking-widest text-sm text-white">ELECTROBID</span>
           </div>
           <nav className="hidden md:flex items-center gap-1">
             {[
@@ -201,7 +201,7 @@ export default function Home() {
         <div className="container mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2.5">
             <Zap className="h-4 w-4 text-cyan-400" />
-            <span className="font-black tracking-widest text-sm">ELECTROBIT</span>
+            <span className="font-black tracking-widest text-sm">ELECTROBID</span>
             <span className="text-gray-600 text-xs font-mono ml-2">© 2026</span>
           </div>
           <div className="flex items-center gap-6 text-sm text-gray-500">

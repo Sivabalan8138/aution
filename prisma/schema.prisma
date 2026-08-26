@@ -113,7 +113,7 @@ enum TransactionType {
 
 model EventSettings {
   id               String   @id @default(uuid())
-  eventName        String   @default("ELECTROBIT | THE EEE AUCTION CHALLENGE")
+  eventName        String   @default("ELECTROBID | THE EEE AUCTION CHALLENGE")
   currentAuctionId String?
   eventStatus      String   @default("WAITING") // WAITING, ACTIVE, PAUSED, FINISHED
   initialPoints    Int      @default(5000)

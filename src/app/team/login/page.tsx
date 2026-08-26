@@ -90,7 +90,7 @@ export default function TeamLogin() {
         </div>
 
         <h1 className="text-2xl font-black text-center tracking-widest mb-1 uppercase text-glow">
-          ELECTROBIT
+          ELECTROBID
         </h1>
         <p className="text-center text-gray-400 mb-8 text-sm tracking-widest uppercase">Team Bidding Portal</p>
 

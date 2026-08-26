@@ -100,7 +100,7 @@ export default function LeaderboardPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `Electrobit_Leaderboard_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `Electrobid_Leaderboard_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -119,7 +119,7 @@ export default function LeaderboardPage() {
               <Zap className="h-6 w-6 text-white" fill="currentColor" />
             </div>
             <div>
-              <div className="font-black text-xl tracking-wider leading-none text-white">ELECTROBIT</div>
+              <div className="font-black text-xl tracking-wider leading-none text-white">ELECTROBID</div>
               <div className="text-[10px] text-blue-400 font-bold tracking-[0.2em] uppercase mt-1">The EEE Auction Challenge</div>
             </div>
           </Link>

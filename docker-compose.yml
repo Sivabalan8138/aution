@@ -4,9 +4,9 @@ services:
     image: postgres:15-alpine
     restart: always
     environment:
-      POSTGRES_USER: electrobit
-      POSTGRES_PASSWORD: electrobitpassword
-      POSTGRES_DB: electrobit_db
+      POSTGRES_USER: electrobid
+      POSTGRES_PASSWORD: electrobidpassword
+      POSTGRES_DB: electrobid_db
     ports:
       - "5432:5432"
     volumes:

@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: electrobit-auction
+    name: electrobid-auction
     runtime: node
     buildCommand: npm install && npx prisma generate && npx prisma db push --accept-data-loss && npm run build
     startCommand: npm run start

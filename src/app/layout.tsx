@@ -6,7 +6,7 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 const firaCode = Fira_Code({ subsets: ['latin'], variable: '--font-mono' });
 
 export const metadata: Metadata = {
-  title: 'ELECTROBIT | THE EEE AUCTION CHALLENGE',
+  title: 'ELECTROBID | THE EEE AUCTION CHALLENGE',
   description: 'Bid Smart. Answer Fast. Win Big. The ultimate electrical engineering auction event.',
 };
 
