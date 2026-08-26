@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
 import prisma from '@/lib/db';
-import { pusherServer } from '@/lib/pusher';
+import { pusherServer } from '@/lib/pusher-server';
 
 // Helper to get team from cookie
 async function getTeamFromRequest(request: Request) {

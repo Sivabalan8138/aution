@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { getPusherClient } from '@/lib/pusher';
+import { getPusherClient } from '@/lib/pusher-client';
 import { Zap, Trophy, Timer, TrendingUp, CheckCircle, XCircle, LogOut, Gavel } from 'lucide-react';
 
 type Auction = {

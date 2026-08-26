@@ -6,7 +6,7 @@ import {
   Trophy, Medal, Users, Target, CircleDollarSign, 
   Download, RefreshCw, Zap, UserPlus, LogIn, Scale, Lock
 } from 'lucide-react';
-import { getPusherClient } from '@/lib/pusher';
+import { getPusherClient } from '@/lib/pusher-client';
 
 interface Team {
   id: string;

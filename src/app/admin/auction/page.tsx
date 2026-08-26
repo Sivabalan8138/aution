@@ -6,7 +6,7 @@ import {
   RefreshCw, ChevronUp, AlertTriangle, Ban, Trophy,
   Zap, Users, Plus
 } from 'lucide-react';
-import { getPusherClient } from '@/lib/pusher';
+import { getPusherClient } from '@/lib/pusher-client';
 
 interface Question {
   id: string;

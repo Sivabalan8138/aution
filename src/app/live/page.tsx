@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { getPusherClient } from '@/lib/pusher';
+import { getPusherClient } from '@/lib/pusher-client';
 import { Zap, Timer as TimerIcon, Trophy, CheckCircle2, XCircle, Gavel, Activity } from 'lucide-react';
 
 interface Bid {
