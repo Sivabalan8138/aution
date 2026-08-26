@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
 import prisma from '@/lib/db';
+import { pusherServer } from '@/lib/pusher';
 
 // Helper to get team from cookie
 async function getTeamFromRequest(request: Request) {
@@ -86,10 +87,8 @@ export async function POST(request: Request) {
       include: { team: true },
     });
 
-    // Notify all connected clients via socket
-    if ((global as any).io) {
-      (global as any).io.emit('bid_placed', newBid);
-    }
+    // Notify all connected clients via Pusher
+    await pusherServer.trigger('public', 'bid_placed', newBid);
 
     return NextResponse.json({ success: true, bid: newBid });
   } catch (error) {

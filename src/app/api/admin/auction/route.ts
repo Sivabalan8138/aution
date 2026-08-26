@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
+import { pusherServer } from '@/lib/pusher';
 
 export async function POST(request: Request) {
   try {
@@ -24,9 +25,7 @@ export async function POST(request: Request) {
         }
       });
 
-      if ((global as any).io) {
-        (global as any).io.emit('auction_started', newAuction);
-      }
+      await pusherServer.trigger('public', 'auction_started', newAuction);
 
       return NextResponse.json(newAuction);
     }
@@ -88,10 +87,8 @@ export async function POST(request: Request) {
         ...noBidTeamTxs
       ]);
 
-      if ((global as any).io) {
-        (global as any).io.emit('bidding_closed', updated);
-        (global as any).io.emit('score_updated'); // emit score update so penalized teams see their balance drop immediately
-      }
+      await pusherServer.trigger('public', 'bidding_closed', updated);
+      await pusherServer.trigger('public', 'score_updated', {});
 
       return NextResponse.json(updated);
     }
@@ -170,17 +167,15 @@ export async function POST(request: Request) {
           ...otherTeamTxs
         ]);
 
-        if ((global as any).io) {
-          (global as any).io.emit('answer_result', {
-            result: 'CORRECT',
-            team: updatedTeam,
-            amount,
-            hasNextBidder: false
-          });
-          (global as any).io.emit('score_updated');
-          (global as any).io.emit('leaderboard_updated');
-          (global as any).io.emit('bidding_closed');
-        }
+        await pusherServer.trigger('public', 'answer_result', {
+          result: 'CORRECT',
+          team: updatedTeam,
+          amount,
+          hasNextBidder: false
+        });
+        await pusherServer.trigger('public', 'score_updated', {});
+        await pusherServer.trigger('public', 'leaderboard_updated', {});
+        await pusherServer.trigger('public', 'bidding_closed', {});
 
         return NextResponse.json({ updatedAuction, updatedTeam, hasNextBidder: false });
       }
@@ -282,19 +277,17 @@ export async function POST(request: Request) {
         });
       }
 
-      if ((global as any).io) {
-        (global as any).io.emit('answer_result', {
-          result: 'WRONG',
-          team: finalDeductedTeam,
-          amount: amount,
-          hasNextBidder,
-          nextWinnerTeam: nextBid ? nextBid.team : null,
-          nextWinningBid: nextBid ? nextBid.amount : null
-        });
-        (global as any).io.emit('score_updated');
-        (global as any).io.emit('leaderboard_updated');
-        (global as any).io.emit('bidding_closed');
-      }
+      await pusherServer.trigger('public', 'answer_result', {
+        result: 'WRONG',
+        team: finalDeductedTeam,
+        amount: amount,
+        hasNextBidder,
+        nextWinnerTeam: nextBid ? nextBid.team : null,
+        nextWinningBid: nextBid ? nextBid.amount : null
+      });
+      await pusherServer.trigger('public', 'score_updated', {});
+      await pusherServer.trigger('public', 'leaderboard_updated', {});
+      await pusherServer.trigger('public', 'bidding_closed', {});
 
       return NextResponse.json({
         updatedAuction,
@@ -320,9 +313,7 @@ export async function POST(request: Request) {
         }
       });
 
-      if ((global as any).io) {
-        (global as any).io.emit('auction_cancelled');
-      }
+      await pusherServer.trigger('public', 'auction_cancelled', {});
 
       return NextResponse.json(updated);
     }

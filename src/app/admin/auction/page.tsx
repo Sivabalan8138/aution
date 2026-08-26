@@ -6,7 +6,7 @@ import {
   RefreshCw, ChevronUp, AlertTriangle, Ban, Trophy,
   Zap, Users, Plus
 } from 'lucide-react';
-import { getSocket } from '@/lib/socket';
+import { getPusherClient } from '@/lib/pusher';
 
 interface Question {
   id: string;
@@ -141,14 +141,15 @@ export default function AdminAuctionPage() {
   useEffect(() => {
     loadData();
     const interval = setInterval(loadData, 2000);
-    const socket = getSocket();
-    socket.emit('join_room', 'admin');
-    socket.on('bid_placed', () => {
+    const pusher = getPusherClient();
+    const channel = pusher.subscribe('public');
+    channel.bind('bid_placed', () => {
       fetch('/api/admin/auction').then(r => r.json()).then(setCurrentAuction);
     });
     return () => {
       clearInterval(interval);
-      socket.off('bid_placed');
+      channel.unbind('bid_placed');
+      pusher.unsubscribe('public');
     };
   }, [loadData]);
 
@@ -161,11 +162,11 @@ export default function AdminAuctionPage() {
         if (s <= 1) {
           clearInterval(timerRef.current!);
           setTimeout(() => setTimerRunning(false), 0);
-          getSocket().emit('timer_tick', 0);
+          fetch('/api/admin/timer', { method: 'POST', body: JSON.stringify({ timer: 0 }) });
           return 0;
         }
         const next = s - 1;
-        getSocket().emit('timer_tick', next);
+        fetch('/api/admin/timer', { method: 'POST', body: JSON.stringify({ timer: next }) });
         return next;
       });
     }, 1000);
@@ -553,7 +554,7 @@ export default function AdminAuctionPage() {
                       const resetTime = currentAuction?.question?.timeLimit || 30;
                       setTimerRunning(false);
                       setTimerSeconds(resetTime);
-                      getSocket().emit('timer_tick', resetTime);
+                      fetch('/api/admin/timer', { method: 'POST', body: JSON.stringify({ timer: resetTime }) });
                     }} 
                     className="p-3 bg-white/10 hover:bg-white/15 rounded-lg border border-white/10"
                     title="Reset Timer"

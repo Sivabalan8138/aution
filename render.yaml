@@ -9,15 +9,3 @@ services:
         value: production
       - key: PORT
         value: 10000
-      - key: DATABASE_URL
-        value: file:./dev.db
-      - key: JWT_SECRET
-        value: supersecret_electrobit_jwt_key_2026
-      - key: ADMIN_USERNAME
-        value: admin
-      - key: ADMIN_PASSWORD
-        value: adminpassword
-      - key: HOST_USERNAME
-        value: host
-      - key: HOST_PASSWORD
-        value: hostpassword

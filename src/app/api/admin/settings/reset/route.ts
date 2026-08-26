@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
+import { pusherServer } from '@/lib/pusher';
 
 export async function POST(request: Request) {
   try {
@@ -32,11 +33,7 @@ export async function POST(request: Request) {
         }
       }
 
-      // Broadcast update via socket
-      const io = (global as any).io;
-      if (io) {
-        io.emit('leaderboard_updated');
-      }
+      await pusherServer.trigger('public', 'leaderboard_updated', {});
 
       return NextResponse.json({ success: true, message: `Reset scores of ${teams.length} team(s) to ${defaultInitialPoints} pts.` });
     }
@@ -53,11 +50,8 @@ export async function POST(request: Request) {
         });
       }
 
-      const io = (global as any).io;
-      if (io) {
-        io.emit('auction_cleared');
-        io.emit('leaderboard_updated');
-      }
+      await pusherServer.trigger('public', 'auction_cleared', {});
+      await pusherServer.trigger('public', 'leaderboard_updated', {});
 
       return NextResponse.json({ success: true, message: 'All auction logs and bids cleared successfully.' });
     }
@@ -84,12 +78,9 @@ export async function POST(request: Request) {
         });
       }
 
-      const io = (global as any).io;
-      if (io) {
-        io.emit('event_settings_updated');
-        io.emit('leaderboard_updated');
-        io.emit('auction_cleared');
-      }
+      await pusherServer.trigger('public', 'event_settings_updated', {});
+      await pusherServer.trigger('public', 'leaderboard_updated', {});
+      await pusherServer.trigger('public', 'auction_cleared', {});
 
       return NextResponse.json({ success: true, message: 'Full system reset completed. All scores reset and auctions cleared.' });
     }

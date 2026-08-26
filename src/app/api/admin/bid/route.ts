@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
+import { pusherServer } from '@/lib/pusher';
 
 export async function POST(request: Request) {
   try {
@@ -44,9 +45,7 @@ export async function POST(request: Request) {
       include: { team: true }
     });
 
-    if ((global as any).io) {
-      (global as any).io.emit('bid_placed', newBid);
-    }
+    await pusherServer.trigger('public', 'bid_placed', newBid);
 
     return NextResponse.json(newBid);
   } catch (error) {

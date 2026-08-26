@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "tsx server.ts",
+    "dev": "next dev",
     "build": "prisma generate && next build",
-    "start": "prisma db push --accept-data-loss && tsx scripts/init-db.ts && NODE_ENV=production tsx server.ts",
+    "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate"
   },
@@ -19,10 +19,10 @@
     "next": "16.3.2",
     "pg": "^8.23.0",
     "prisma": "^7.9.1",
+    "pusher": "^5.3.4",
+    "pusher-js": "^8.6.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "socket.io": "^4.8.3",
-    "socket.io-client": "^4.8.3",
     "tsx": "^4.23.12",
     "typescript": "^6.0.3",
     "zod": "^4.4.3"

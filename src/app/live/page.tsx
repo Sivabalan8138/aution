@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { getSocket } from '@/lib/socket';
+import { getPusherClient } from '@/lib/pusher';
 import { Zap, Timer as TimerIcon, Trophy, CheckCircle2, XCircle, Gavel, Activity } from 'lucide-react';
 
 interface Bid {
@@ -61,27 +61,27 @@ export default function LiveScreenPage() {
     fetchAuction();
     const interval = setInterval(fetchAuction, 2000);
 
-    const socket = getSocket();
-    socket.emit('join_room', 'public');
+    const pusher = getPusherClient();
+    const channel = pusher.subscribe('public');
 
-    socket.on('auction_started', (newAuction: Auction) => {
+    channel.bind('auction_started', (newAuction: Auction) => {
       setAuction(newAuction);
       setTimer(newAuction.question?.timeLimit || 30);
       setCelebration(null);
       prevBidCount.current = 0;
     });
 
-    socket.on('bid_placed', () => {
+    channel.bind('bid_placed', () => {
       fetchAuction();
       setBidFlash(true);
       setTimeout(() => setBidFlash(false), 600);
     });
 
-    socket.on('timer_tick', (t: number) => setTimer(t));
+    channel.bind('timer_tick', (t: number) => setTimer(t));
 
-    socket.on('bidding_closed', () => fetchAuction());
+    channel.bind('bidding_closed', () => fetchAuction());
 
-    socket.on('answer_result', ({ result, team, amount, hasNextBidder, nextWinnerTeam, nextWinningBid }: any) => {
+    channel.bind('answer_result', ({ result, team, amount, hasNextBidder, nextWinnerTeam, nextWinningBid }: any) => {
       fetchAuction();
       if (team) {
         setCelebration({
@@ -96,19 +96,15 @@ export default function LiveScreenPage() {
       }
     });
 
-    socket.on('auction_cancelled', () => {
+    channel.bind('auction_cancelled', () => {
       setAuction(null);
       setCelebration(null);
     });
 
     return () => {
       clearInterval(interval);
-      socket.off('auction_started');
-      socket.off('bid_placed');
-      socket.off('timer_tick');
-      socket.off('bidding_closed');
-      socket.off('answer_result');
-      socket.off('auction_cancelled');
+      channel.unbind_all();
+      pusher.unsubscribe('public');
     };
   }, []);
 

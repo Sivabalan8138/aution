@@ -6,7 +6,7 @@ import {
   Trophy, Medal, Users, Target, CircleDollarSign, 
   Download, RefreshCw, Zap, UserPlus, LogIn, Scale, Lock
 } from 'lucide-react';
-import { getSocket } from '@/lib/socket';
+import { getPusherClient } from '@/lib/pusher';
 
 interface Team {
   id: string;
@@ -64,17 +64,17 @@ export default function LeaderboardPage() {
     // Fallback polling (slower, since sockets handle realtime)
     const interval = setInterval(fetchLeaderboard, 10000);
 
-    // Socket.io for Real-time
-    const socket = getSocket();
-    socket.emit('join_room', 'public');
+    // Pusher for Real-time
+    const pusher = getPusherClient();
+    const channel = pusher.subscribe('public');
     
-    socket.on('leaderboard_updated', () => { fetchLeaderboard(); });
-    socket.on('score_updated', () => { fetchLeaderboard(); });
+    channel.bind('leaderboard_updated', () => { fetchLeaderboard(); });
+    channel.bind('score_updated', () => { fetchLeaderboard(); });
 
     return () => {
       clearInterval(interval);
-      socket.off('leaderboard_updated');
-      socket.off('score_updated');
+      channel.unbind_all();
+      pusher.unsubscribe('public');
     };
   }, []);
 
