@@ -63,7 +63,7 @@ export default function Home() {
           {/* Main headline */}
           <h1 className="text-7xl md:text-[10rem] font-black tracking-tighter uppercase mb-6 leading-none"
             style={{ background: 'linear-gradient(135deg, #ffffff 0%, #00e5ff 40%, #ff00ea 70%, #f0f000 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            ELECTRO<br className="md:hidden" />BIT
+            ELECTRO<br className="md:hidden" />BID
           </h1>
 
           <p className="text-xl md:text-2xl text-gray-400 font-light mb-14 max-w-2xl mx-auto leading-relaxed">
