@@ -3,16 +3,22 @@ import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
 
+// Suppress pg-connection-string SSL mode warning globally
+if (typeof process !== 'undefined' && process.emitWarning) {
+  const originalEmitWarning = process.emitWarning;
+  process.emitWarning = function(warning: string | Error, ...args: any[]) {
+    if (typeof warning === 'string' && warning.includes('SECURITY WARNING: The SSL modes')) {
+      return;
+    }
+    return (originalEmitWarning as any).call(process, warning, ...args);
+  };
+}
+
 function getAdapter() {
   let dbUrl = process.env.DATABASE_URL;
   if (!dbUrl || dbUrl.startsWith('file:')) {
     // Provide a dummy postgres URL for Next.js build step if they haven't set the real one yet
     dbUrl = 'postgresql://postgres:postgres@localhost:5432/dummy';
-  }
-  
-  if (dbUrl && dbUrl.includes('sslmode=require')) {
-    // Replace sslmode=require with ssl=true to enable SSL without triggering pg-connection-string warnings
-    dbUrl = dbUrl.replace('sslmode=require', 'ssl=true');
   }
   
   const pool = new pg.Pool({ connectionString: dbUrl });
