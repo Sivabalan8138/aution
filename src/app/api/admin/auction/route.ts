@@ -110,40 +110,7 @@ export async function POST(request: Request) {
           where: { id: auctionId },
           include: { bids: true }
         });
-        const biddingTeamIds = Array.from(new Set(auctionWithBids?.bids.map((b: any) => b.teamId) || []));
-
-        // Find all other active teams that DID place a bid to penalize them 100 points
-        const otherTeams = await prisma.team.findMany({
-          where: { 
-            status: 'ACTIVE',
-            id: { 
-              in: biddingTeamIds.filter(id => id !== teamId)
-            } 
-          }
-        });
-
-        // Prepare bulk operations for other teams
-        const otherTeamUpdates = otherTeams.map(t => 
-          prisma.team.update({
-            where: { id: t.id },
-            data: { points: Math.max(0, t.points - 100) }
-          })
-        );
-        const otherTeamTxs = otherTeams.map(t =>
-          prisma.scoreTransaction.create({
-            data: {
-              teamId: t.id,
-              auctionId,
-              amount: 100,
-              type: 'AUCTION_LOSS',
-              previousPoints: t.points,
-              newPoints: Math.max(0, t.points - 100),
-              reason: `Another team answered correctly (100 pts penalty)`
-            }
-          })
-        );
-        
-        const [updatedAuction, updatedTeam, tx, ...rest] = await prisma.$transaction([
+        const [updatedAuction, updatedTeam, tx] = await prisma.$transaction([
           prisma.auction.update({
             where: { id: auctionId },
             data: { status: 'COMPLETED', result: 'CORRECT' }
@@ -162,9 +129,7 @@ export async function POST(request: Request) {
               newPoints: newPoints,
               reason: `Auction win (Wager refunded + ${amount} pts won)`
             }
-          }),
-          ...otherTeamUpdates,
-          ...otherTeamTxs
+          })
         ]);
 
         await pusherServer.trigger('public', 'answer_result', {
