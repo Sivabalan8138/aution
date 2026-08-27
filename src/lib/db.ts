@@ -10,6 +10,9 @@ function getAdapter() {
   if (!dbUrl || dbUrl.startsWith('file:')) {
     // Provide a dummy postgres URL for Next.js build step if they haven't set the real one yet
     dbUrl = 'postgresql://postgres:postgres@localhost:5432/dummy';
+  } else if (dbUrl.includes('sslmode=') && !dbUrl.includes('uselibpqcompat=')) {
+    // Add uselibpqcompat=true to fix pg 8.23.0+ security warning for sslmode
+    dbUrl += (dbUrl.includes('?') ? '&' : '?') + 'uselibpqcompat=true';
   }
   
   const pool = new pg.Pool({ connectionString: dbUrl });
