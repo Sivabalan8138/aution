@@ -3,16 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
 
-// Suppress pg-connection-string SSL mode warning globally
-if (typeof process !== 'undefined' && process.emitWarning) {
-  const originalEmitWarning = process.emitWarning;
-  process.emitWarning = function(warning: string | Error, ...args: any[]) {
-    if (typeof warning === 'string' && warning.includes('SECURITY WARNING: The SSL modes')) {
-      return;
-    }
-    return (originalEmitWarning as any).call(process, warning, ...args);
-  };
-}
+
 
 function getAdapter() {
   let dbUrl = process.env.DATABASE_URL;
