@@ -64,6 +64,9 @@ model Auction {
   updatedAt     DateTime           @updatedAt
   bids          Bid[]
   scoreTx       ScoreTransaction[]
+
+  @@index([questionId])
+  @@index([winnerTeamId])
 }
 
 enum AuctionStatus {
@@ -87,6 +90,9 @@ model Bid {
   team      Team     @relation(fields: [teamId], references: [id])
   amount    Int
   createdAt DateTime @default(now())
+
+  @@index([auctionId])
+  @@index([teamId])
 }
 
 model ScoreTransaction {
@@ -101,6 +107,9 @@ model ScoreTransaction {
   newPoints      Int
   reason         String?
   timestamp      DateTime        @default(now())
+
+  @@index([teamId])
+  @@index([auctionId])
 }
 
 enum TransactionType {
