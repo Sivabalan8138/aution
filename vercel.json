@@ -4,7 +4,7 @@
     "electrobid-auction": {
       "root": ".",
       "framework": "nextjs",
-      "buildCommand": "npm install && npx prisma generate && npx prisma db push --accept-data-loss && npm run build"
+      "buildCommand": "npx prisma db push --accept-data-loss && next build"
     }
   },
   "rewrites": [
