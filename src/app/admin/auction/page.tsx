@@ -182,7 +182,11 @@ export default function AdminAuctionPage() {
           clearInterval(timerRef.current!);
           setTimeout(() => {
             setTimerRunning(false);
-            // Auto triggers removed for manual control
+            if (currentAuction?.bids?.length) {
+              handleAutoCloseBidding();
+            } else {
+              handleAutoCancelAuction();
+            }
           }, 0);
           fetch('/api/admin/timer', { method: 'POST', body: JSON.stringify({ timer: 0 }) });
           return 0;
