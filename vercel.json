@@ -1,0 +1,19 @@
+{
+  "regions": ["sin1"],
+  "services": {
+    "electrobid-auction": {
+      "root": ".",
+      "framework": "nextjs",
+      "buildCommand": "npm install && npx prisma generate && npx prisma db push --accept-data-loss && npm run build"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": {
+        "type": "service",
+        "service": "electrobid-auction"
+      }
+    }
+  ]
+}
