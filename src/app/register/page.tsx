@@ -17,13 +17,15 @@ export default function RegisterPage() {
     
     const formData = new FormData(event.currentTarget);
     const result = await registerTeam(formData);
-    
     if (result.success) {
+      if (result.token) {
+        sessionStorage.setItem('team_token', result.token);
+        localStorage.setItem('team_token', result.token);
+      }
       setSuccessData(result.team);
     } else {
       setError(result.error || 'Something went wrong');
     }
-    
     setLoading(false);
   }
 
