@@ -689,7 +689,7 @@ export default function AdminAuctionPage() {
                   type="number"
                   value={customBid}
                   onChange={(e) => setCustomBid(e.target.value)}
-                  placeholder={`Min: ${(currentAuction.bids?.[0]?.amount || currentAuction.question.basePoints) + 1}`}
+                  placeholder={`Min: ${currentAuction.bids?.[0]?.amount !== undefined ? currentAuction.bids[0].amount + 1 : currentAuction.question.basePoints}`}
                   className="flex-1 bg-black/60 border border-white/10 px-4 py-3 focus:outline-none focus:border-primary text-white font-mono rounded"
                 />
                 <button

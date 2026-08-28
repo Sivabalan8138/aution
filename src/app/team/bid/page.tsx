@@ -314,21 +314,27 @@ export default function TeamBidPage() {
 
                 {/* Quick bid buttons */}
                 <div className="grid grid-cols-4 gap-2">
-                  {[0, 50, 100, 200, 500].map(inc => {
-                    const bidVal = basePoints + inc;
-                    const canAfford = team ? team.points >= bidVal : false;
-                    return (
-                      <button
-                        key={inc}
-                        onClick={() => handlePlaceBid(bidVal)}
-                        disabled={loading || !canAfford}
-                        className="flex flex-col items-center py-3 bg-white/5 hover:bg-primary/20 hover:border-primary border border-white/10 rounded transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                      >
-                        <span className="text-xs text-gray-400">{inc === 0 ? 'Base' : `+${inc}`}</span>
-                        <span className="font-mono font-bold text-sm text-white">{bidVal}</span>
-                      </button>
-                    );
-                  })}
+                  {(() => {
+                    const currentHighestBid = auction?.bids?.[0]?.amount;
+                    const referenceBid = currentHighestBid !== undefined ? currentHighestBid : basePoints;
+                    const increments = currentHighestBid !== undefined ? [50, 100, 200, 500] : [0, 50, 100, 200, 500];
+
+                    return increments.map(inc => {
+                      const bidVal = referenceBid + inc;
+                      const canAfford = team ? team.points >= bidVal : false;
+                      return (
+                        <button
+                          key={inc}
+                          onClick={() => handlePlaceBid(bidVal)}
+                          disabled={loading || !canAfford}
+                          className="flex flex-col items-center py-3 bg-white/5 hover:bg-primary/20 hover:border-primary border border-white/10 rounded transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <span className="text-xs text-gray-400">{inc === 0 ? 'Base' : `+${inc}`}</span>
+                          <span className="font-mono font-bold text-sm text-white">{bidVal}</span>
+                        </button>
+                      );
+                    });
+                  })()}
                 </div>
 
                 {/* Custom bid */}
@@ -337,7 +343,7 @@ export default function TeamBidPage() {
                     type="number"
                     value={customBid}
                     onChange={(e) => setCustomBid(e.target.value)}
-                    placeholder={`Min: ${basePoints}`}
+                    placeholder={`Min: ${auction?.bids?.[0]?.amount !== undefined ? auction.bids[0].amount + 1 : basePoints}`}
                     className="flex-1 bg-black/60 border border-white/10 px-4 py-3 focus:outline-none focus:border-primary text-white font-mono rounded"
                   />
                   <button
