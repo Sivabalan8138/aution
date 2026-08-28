@@ -128,7 +128,12 @@ export default function AdminAuctionPage() {
       // Only initialize the timer if this is a new auction we haven't seen yet
       if (auction && auction.id !== lastAuctionIdRef.current) {
         lastAuctionIdRef.current = auction.id;
-        if (auction.question?.timeLimit) {
+        
+        if (auction.timerEndsAt) {
+          const remaining = Math.max(0, Math.floor((new Date(auction.timerEndsAt).getTime() - Date.now()) / 1000));
+          setTimerSeconds(remaining);
+          setTimerRunning(remaining > 0);
+        } else if (auction.question?.timeLimit) {
           setTimerSeconds(auction.question.timeLimit);
           setTimerRunning(false);
         }
@@ -175,11 +180,15 @@ export default function AdminAuctionPage() {
       setTimerSeconds(s => {
         if (s <= 1) {
           clearInterval(timerRef.current!);
-          setTimeout(() => setTimerRunning(false), 0);
+          setTimeout(() => {
+            setTimerRunning(false);
+            // Auto triggers removed for manual control
+          }, 0);
           fetch('/api/admin/timer', { method: 'POST', body: JSON.stringify({ timer: 0 }) });
           return 0;
         }
         const next = s - 1;
+        // Don't spam the API with stop commands on tick, just tick
         fetch('/api/admin/timer', { method: 'POST', body: JSON.stringify({ timer: next }) });
         return next;
       });
@@ -188,7 +197,7 @@ export default function AdminAuctionPage() {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [timerRunning]);
+  }, [timerRunning, currentAuction]);
 
   const handleStartAuction = async () => {
     if (!selectedQuestion) return showToast('Select a question first', 'error');
@@ -273,6 +282,61 @@ export default function AdminAuctionPage() {
       showToast('Network error', 'error');
     }
   };
+
+  const handleAutoCloseBidding = async () => {
+    if (!currentAuction?.bids?.length) return;
+    const highestBid = currentAuction.bids[0];
+    const winnerTeam = teams.find(t => t.id === highestBid.teamId);
+
+    // 0-second Optimistic UI
+    const previousAuction = { ...currentAuction };
+    setCurrentAuction({
+      ...currentAuction,
+      status: 'CLOSED',
+      winnerTeamId: highestBid.teamId,
+      winningBid: highestBid.amount,
+      winnerTeam
+    });
+
+    try {
+      const res = await fetch('/api/admin/auction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'CLOSE_BIDDING',
+          payload: { auctionId: currentAuction.id, winnerTeamId: highestBid.teamId, winningBid: highestBid.amount }
+        })
+      });
+      if (res.ok) {
+        const newAuction = await fetch('/api/admin/auction').then(r => r.json());
+        setCurrentAuction(newAuction);
+        showToast('Time is up! Bidding closed automatically.', 'success');
+      } else {
+        setCurrentAuction(previousAuction); // Rollback
+        showToast('Failed to auto-close bidding', 'error');
+      }
+    } catch {
+      setCurrentAuction(previousAuction); // Rollback
+    }
+  };
+
+  const handleAutoCancelAuction = async () => {
+    if (!currentAuction) return;
+    const previousAuction = currentAuction;
+    setCurrentAuction(null);
+
+    try {
+      await fetch('/api/admin/auction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'CANCEL_AUCTION', payload: { auctionId: previousAuction.id } })
+      });
+      showToast('Timer ended with 0 bids. Auction auto-cancelled.', 'error');
+    } catch {
+      setCurrentAuction(previousAuction);
+    }
+  };
+
 
   const handleCloseBidding = () => {
     if (!currentAuction?.bids?.length) return showToast('No bids placed yet', 'error');
@@ -618,7 +682,18 @@ export default function AdminAuctionPage() {
                 </div>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => setTimerRunning(!timerRunning)}
+                    onClick={() => {
+                      const willRun = !timerRunning;
+                      setTimerRunning(willRun);
+                      fetch('/api/admin/timer', { 
+                        method: 'POST', 
+                        body: JSON.stringify({ 
+                          timer: timerSeconds, 
+                          action: willRun ? 'START' : 'STOP',
+                          auctionId: currentAuction.id
+                        }) 
+                      });
+                    }}
                     className={`p-3 rounded-lg ${timerRunning ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30' : 'bg-green-500/20 text-green-500 border border-green-500/30'}`}
                   >
                     {timerRunning ? <Square className="h-5 w-5" /> : <Play className="h-5 w-5" />}
@@ -628,7 +703,14 @@ export default function AdminAuctionPage() {
                       const resetTime = currentAuction?.question?.timeLimit || 30;
                       setTimerRunning(false);
                       setTimerSeconds(resetTime);
-                      fetch('/api/admin/timer', { method: 'POST', body: JSON.stringify({ timer: resetTime }) });
+                      fetch('/api/admin/timer', { 
+                        method: 'POST', 
+                        body: JSON.stringify({ 
+                          timer: resetTime,
+                          action: 'STOP',
+                          auctionId: currentAuction.id
+                        }) 
+                      });
                     }} 
                     className="p-3 bg-white/10 hover:bg-white/15 rounded-lg border border-white/10"
                     title="Reset Timer"

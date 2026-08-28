@@ -64,6 +64,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Bidding is not currently active' }, { status: 400 });
     }
 
+    if (!auction.timerEndsAt) {
+      return NextResponse.json({ error: 'Bidding has not started yet. Wait for the host to start the timer.' }, { status: 400 });
+    }
+
+    if (new Date() > new Date(auction.timerEndsAt)) {
+      return NextResponse.json({ error: 'Time is up! Bidding is closed.' }, { status: 400 });
+    }
+
     if (!team || team.status !== 'ACTIVE') {
       return NextResponse.json({ error: 'Your team is not active' }, { status: 403 });
     }

@@ -60,6 +60,7 @@ model Auction {
   winnerTeam    Team?              @relation(fields: [winnerTeamId], references: [id])
   winningBid    Int?
   result        AnswerResult?
+  timerEndsAt   DateTime?
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
   bids          Bid[]

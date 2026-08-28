@@ -21,6 +21,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Auction is not active' }, { status: 400 });
     }
 
+    if (!auction.timerEndsAt) {
+      return NextResponse.json({ error: 'Bidding has not started yet. Please start the timer first.' }, { status: 400 });
+    }
+
+
     if (!team || team.status !== 'ACTIVE') {
       return NextResponse.json({ error: 'Invalid or disabled team' }, { status: 400 });
     }
