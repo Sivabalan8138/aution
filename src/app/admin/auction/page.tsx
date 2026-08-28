@@ -223,7 +223,22 @@ export default function AdminAuctionPage() {
     const currentHighest = currentAuction.bids?.[0]?.amount || currentAuction.question.basePoints;
     if (amount <= currentHighest) return showToast(`Bid must be higher than current: ${currentHighest}`, 'error');
 
-    setLoadingAction('bid');
+    // 0 Second (Optimistic UI) Update
+    const previousAuction = { ...currentAuction };
+    const optimisticBid: Bid = {
+      id: 'temp-' + Date.now(),
+      amount,
+      teamId: selectedTeam,
+      team: { id: team.id, teamName: team.teamName },
+      createdAt: new Date().toISOString()
+    };
+    
+    setCurrentAuction({
+      ...currentAuction,
+      bids: [optimisticBid, ...(currentAuction.bids || [])]
+    });
+    setCustomBid('');
+
     try {
       const res = await fetch('/api/admin/bid', {
         method: 'POST',
@@ -233,14 +248,15 @@ export default function AdminAuctionPage() {
       if (res.ok) {
         const newAuction = await fetch('/api/admin/auction').then(r => r.json());
         setCurrentAuction(newAuction);
-        setCustomBid('');
         showToast(`Bid of ${amount} pts placed for ${team.teamName}`, 'success');
       } else {
         const err = await res.json();
+        setCurrentAuction(previousAuction); // Rollback
         showToast(err.error || 'Failed to place bid', 'error');
       }
-    } finally {
-      setLoadingAction(null);
+    } catch {
+      setCurrentAuction(previousAuction); // Rollback
+      showToast('Network error', 'error');
     }
   };
 
