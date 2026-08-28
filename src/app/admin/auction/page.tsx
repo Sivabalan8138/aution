@@ -192,7 +192,21 @@ export default function AdminAuctionPage() {
 
   const handleStartAuction = async () => {
     if (!selectedQuestion) return showToast('Select a question first', 'error');
-    setLoadingAction('start');
+    
+    // 0-second Optimistic UI
+    const selectedQ = questions.find(q => q.id === selectedQuestion);
+    if (!selectedQ) return;
+    
+    const previousAuction = currentAuction;
+    setCurrentAuction({
+      id: 'temp-start-' + Date.now(),
+      status: 'ACTIVE',
+      question: selectedQ,
+      bids: []
+    });
+    setTimerSeconds(selectedQ.timeLimit || 30);
+    setTimerRunning(false);
+
     try {
       const res = await fetch('/api/admin/auction', {
         method: 'POST',
@@ -202,14 +216,14 @@ export default function AdminAuctionPage() {
       if (res.ok) {
         const auction = await res.json();
         setCurrentAuction(auction);
-        setTimerSeconds(auction.question?.timeLimit || 30);
-        setTimerRunning(false);
         showToast('Auction started!', 'success');
       } else {
+        setCurrentAuction(previousAuction); // Rollback
         showToast('Failed to start auction', 'error');
       }
-    } finally {
-      setLoadingAction(null);
+    } catch {
+      setCurrentAuction(previousAuction); // Rollback
+      showToast('Network error', 'error');
     }
   };
 
@@ -270,9 +284,19 @@ export default function AdminAuctionPage() {
       confirmLabel: 'Close & Proceed to Answer',
       confirmClass: 'bg-yellow-500 hover:bg-yellow-600 text-black',
       onConfirm: async () => {
-        setLoadingAction('close');
+        // 0-second Optimistic UI
+        const previousAuction = { ...currentAuction };
+        setCurrentAuction({
+          ...currentAuction,
+          status: 'CLOSED',
+          winnerTeamId: highestBid.teamId,
+          winningBid: highestBid.amount,
+          winnerTeam
+        });
+        setTimerRunning(false);
+
         try {
-          await fetch('/api/admin/auction', {
+          const res = await fetch('/api/admin/auction', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -280,12 +304,16 @@ export default function AdminAuctionPage() {
               payload: { auctionId: currentAuction.id, winnerTeamId: highestBid.teamId, winningBid: highestBid.amount }
             })
           });
-          const newAuction = await fetch('/api/admin/auction').then(r => r.json());
-          setCurrentAuction(newAuction);
-          setTimerRunning(false);
-          showToast('Bidding closed!', 'success');
-        } finally {
-          setLoadingAction(null);
+          if (res.ok) {
+            const newAuction = await fetch('/api/admin/auction').then(r => r.json());
+            setCurrentAuction(newAuction);
+            showToast('Bidding closed!', 'success');
+          } else {
+            setCurrentAuction(previousAuction); // Rollback
+            showToast('Failed to close bidding', 'error');
+          }
+        } catch {
+          setCurrentAuction(previousAuction); // Rollback
         }
       }
     });
@@ -321,14 +349,27 @@ export default function AdminAuctionPage() {
       confirmLabel: result === 'CORRECT' ? 'Confirm Correct' : (nextBid ? 'Deduct & Move to Next Bidder' : 'Confirm Wrong'),
       confirmClass: result === 'CORRECT' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white',
       onConfirm: async () => {
-        setLoadingAction('resolve');
+        // 0-second Optimistic UI
+        const previousAuction = { ...currentAuction! };
+        if (result === 'CORRECT' || !nextBid) {
+          setCurrentAuction(null); // Auction over
+        } else {
+          // Move to next bidder
+          setCurrentAuction({
+            ...currentAuction!,
+            winnerTeamId: nextBid.teamId,
+            winnerTeam: nextBid.team as any,
+            winningBid: nextBid.amount
+          });
+        }
+
         try {
           const res = await fetch('/api/admin/auction', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               action: 'RESOLVE_ANSWER',
-              payload: { auctionId: currentAuction!.id, result, teamId: currentAuction!.winnerTeamId, amount: currentAuction!.winningBid }
+              payload: { auctionId: previousAuction.id, result, teamId: previousAuction.winnerTeamId, amount: previousAuction.winningBid }
             })
           });
           const data = await res.json();
@@ -341,8 +382,9 @@ export default function AdminAuctionPage() {
             loadData();
             showToast(result === 'CORRECT' ? 'Correct! Points awarded.' : 'Wrong! Points deducted. Auction completed.', result === 'CORRECT' ? 'success' : 'error');
           }
-        } finally {
-          setLoadingAction(null);
+        } catch {
+          setCurrentAuction(previousAuction); // Rollback on error
+          showToast('Network error', 'error');
         }
       }
     });
@@ -355,18 +397,20 @@ export default function AdminAuctionPage() {
       confirmLabel: 'Cancel Auction',
       confirmClass: 'bg-red-600 hover:bg-red-700 text-white',
       onConfirm: async () => {
-        setLoadingAction('cancel');
+        const previousAuction = currentAuction;
+        setCurrentAuction(null);
+        setTimerRunning(false);
+
         try {
           await fetch('/api/admin/auction', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'CANCEL_AUCTION', payload: { auctionId: currentAuction!.id } })
+            body: JSON.stringify({ action: 'CANCEL_AUCTION', payload: { auctionId: previousAuction!.id } })
           });
-          setCurrentAuction(null);
-          setTimerRunning(false);
           showToast('Auction cancelled.', 'error');
-        } finally {
-          setLoadingAction(null);
+        } catch {
+          setCurrentAuction(previousAuction); // Rollback
+          showToast('Network error', 'error');
         }
       }
     });
