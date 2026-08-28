@@ -4,7 +4,12 @@ import prisma from '@/lib/db';
 export async function GET() {
   try {
     const questions = await prisma.question.findMany({
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
+      include: {
+        _count: {
+          select: { auctions: true }
+        }
+      }
     });
     return NextResponse.json(questions);
   } catch (error) {

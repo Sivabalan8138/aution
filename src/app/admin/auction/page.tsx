@@ -16,6 +16,7 @@ interface Question {
   basePoints: number;
   timeLimit: number;
   category?: string;
+  _count?: { auctions: number };
 }
 
 interface Team {
@@ -491,9 +492,7 @@ export default function AdminAuctionPage() {
 
   // ── Start Screen ─────────────────────────────────────────────────────────────
   if (!currentAuction || currentAuction.status === 'CANCELLED' || currentAuction.status === 'COMPLETED') {
-    const unusedQuestions = questions.filter(q =>
-      !q.id // placeholder; ideally filter already-used question IDs
-    );
+    const unusedQuestions = questions.filter(q => !(q._count && q._count.auctions > 0));
     return (
       <div className="max-w-3xl mx-auto space-y-6">
         {/* Toast */}
@@ -518,7 +517,7 @@ export default function AdminAuctionPage() {
                 onChange={(e) => setSelectedQuestion(e.target.value)}
               >
                 <option value="">-- Choose a Question --</option>
-                {questions.map(q => (
+                {unusedQuestions.map(q => (
                   <option key={q.id} value={q.id}>
                     [{q.difficulty}] {q.text.substring(0, 70)}{q.text.length > 70 ? '...' : ''} ({q.basePoints} pts)
                   </option>
@@ -553,7 +552,7 @@ export default function AdminAuctionPage() {
 
         <div className="glass-card p-5 border border-white/10 rounded-lg text-center text-sm text-gray-400">
           <p className="font-mono uppercase tracking-widest">
-            {questions.length} questions available · {teams.filter(t => t.status === 'ACTIVE').length} active teams
+            {unusedQuestions.length} unused questions available · {teams.filter(t => t.status === 'ACTIVE').length} active teams
           </p>
         </div>
       </div>

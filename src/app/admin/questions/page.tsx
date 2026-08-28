@@ -28,6 +28,7 @@ interface Question {
   timeLimit: number;
   category?: string;
   createdAt?: string;
+  _count?: { auctions: number };
 }
 
 export default function AdminQuestionsPage() {
@@ -495,6 +496,11 @@ export default function AdminQuestionsPage() {
                       <div className="text-xs text-gray-500 mt-1 flex items-center gap-2">
                         {q.category && <span className="bg-white/5 px-2 py-0.5 rounded text-gray-400 border border-white/5">{q.category}</span>}
                         <span>Timer: {q.timeLimit}s</span>
+                        {q._count && q._count.auctions > 0 ? (
+                          <span className="bg-red-500/10 text-red-400 px-2 py-0.5 rounded border border-red-500/20 font-bold ml-2">USED</span>
+                        ) : (
+                          <span className="bg-green-500/10 text-green-400 px-2 py-0.5 rounded border border-green-500/20 font-bold ml-2">UNUSED</span>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-green-400 font-bold">{q.answer}</td>
