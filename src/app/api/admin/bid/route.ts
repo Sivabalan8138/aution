@@ -6,19 +6,21 @@ export async function POST(request: Request) {
   try {
     const { auctionId, teamId, amount } = await request.json();
 
-    const auction = await prisma.auction.findUnique({
-      where: { id: auctionId },
-      include: {
-        bids: { orderBy: [{ amount: 'desc' }, { team: { points: 'desc' } }, { createdAt: 'asc' }] },
-        question: true
-      }
-    });
+    const [auction, team] = await Promise.all([
+      prisma.auction.findUnique({
+        where: { id: auctionId },
+        include: {
+          bids: { orderBy: [{ amount: 'desc' }, { team: { points: 'desc' } }, { createdAt: 'asc' }] },
+          question: true
+        }
+      }),
+      prisma.team.findUnique({ where: { id: teamId } })
+    ]);
 
     if (!auction || auction.status !== 'ACTIVE') {
       return NextResponse.json({ error: 'Auction is not active' }, { status: 400 });
     }
 
-    const team = await prisma.team.findUnique({ where: { id: teamId } });
     if (!team || team.status !== 'ACTIVE') {
       return NextResponse.json({ error: 'Invalid or disabled team' }, { status: 400 });
     }

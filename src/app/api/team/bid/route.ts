@@ -48,21 +48,22 @@ export async function POST(request: Request) {
     const bidAmount = Number(amount);
     const teamId = teamPayload.teamId as string;
 
-    // Fetch auction with bids
-    const auction = await prisma.auction.findUnique({
-      where: { id: auctionId },
-      include: {
-        bids: { orderBy: [{ amount: 'desc' }, { team: { points: 'desc' } }, { createdAt: 'asc' }] },
-        question: true,
-      },
-    });
+    // Fetch auction with bids and team concurrently
+    const [auction, team] = await Promise.all([
+      prisma.auction.findUnique({
+        where: { id: auctionId },
+        include: {
+          bids: { orderBy: [{ amount: 'desc' }, { team: { points: 'desc' } }, { createdAt: 'asc' }] },
+          question: true,
+        },
+      }),
+      prisma.team.findUnique({ where: { id: teamId } })
+    ]);
 
     if (!auction || auction.status !== 'ACTIVE') {
       return NextResponse.json({ error: 'Bidding is not currently active' }, { status: 400 });
     }
 
-    // Fetch team
-    const team = await prisma.team.findUnique({ where: { id: teamId } });
     if (!team || team.status !== 'ACTIVE') {
       return NextResponse.json({ error: 'Your team is not active' }, { status: 403 });
     }

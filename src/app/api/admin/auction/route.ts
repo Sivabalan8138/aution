@@ -35,15 +35,18 @@ export async function POST(request: Request) {
       const { auctionId } = payload;
       
       // Identify all active teams that didn't bid and determine the winner server-side
-      const auctionWithBids = await prisma.auction.findUnique({
-        where: { id: auctionId },
-        include: { 
-          bids: {
-            include: { team: true },
-            orderBy: [{ amount: 'desc' }, { team: { points: 'desc' } }, { createdAt: 'asc' }]
+      const [auctionWithBids, allActiveTeams] = await Promise.all([
+        prisma.auction.findUnique({
+          where: { id: auctionId },
+          include: { 
+            bids: {
+              include: { team: true },
+              orderBy: [{ amount: 'desc' }, { team: { points: 'desc' } }, { createdAt: 'asc' }]
+            }
           }
-        }
-      });
+        }),
+        prisma.team.findMany({ where: { status: 'ACTIVE' } })
+      ]);
 
       if (!auctionWithBids || auctionWithBids.bids.length === 0) {
         return NextResponse.json({ error: 'No bids placed yet' }, { status: 400 });
@@ -55,7 +58,6 @@ export async function POST(request: Request) {
       const team = highestBid.team;
 
       if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 });
-      const allActiveTeams = await prisma.team.findMany({ where: { status: 'ACTIVE' } });
       const biddingTeamIds = new Set(auctionWithBids?.bids.map((b: any) => b.teamId));
       
       const noBidTeams = allActiveTeams.filter(t => !biddingTeamIds.has(t.id));
@@ -110,19 +112,20 @@ export async function POST(request: Request) {
     if (action === 'RESOLVE_ANSWER') {
       const { auctionId, result, teamId, amount } = payload; // result: 'CORRECT' or 'WRONG'
       
-      const team = await prisma.team.findUnique({ where: { id: teamId } });
-      if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 });
+        // Fetch the team and auction with bids concurrently
+        const [team, auctionWithBids] = await Promise.all([
+          prisma.team.findUnique({ where: { id: teamId } }),
+          prisma.auction.findUnique({
+            where: { id: auctionId },
+            include: { bids: true }
+          })
+        ]);
+        if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 });
 
       if (result === 'CORRECT') {
         // Points were deducted at CLOSE_BIDDING.
         // Refund the wager (amount) AND add the winnings (amount) => net +amount from original.
         const newPoints = team.points + (amount * 2);
-        
-        // Fetch the auction with its bids to know who participated
-        const auctionWithBids = await prisma.auction.findUnique({
-          where: { id: auctionId },
-          include: { bids: true }
-        });
         const [updatedAuction, updatedTeam, tx] = await prisma.$transaction([
           prisma.auction.update({
             where: { id: auctionId },
