@@ -66,3 +66,13 @@ export async function GET(request: Request) {
   }
 }
 export const dynamic = 'force-dynamic';
+
+export async function DELETE() {
+  try {
+    const result = await prisma.scoreTransaction.deleteMany({});
+    return NextResponse.json({ success: true, count: result.count });
+  } catch (error) {
+    console.error('Failed to clear score history:', error);
+    return NextResponse.json({ error: 'Failed to clear score history' }, { status: 500 });
+  }
+}

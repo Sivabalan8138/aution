@@ -14,7 +14,8 @@ import {
   Clock, 
   Users, 
   Activity,
-  ArrowRight
+  ArrowRight,
+  Trash2
 } from 'lucide-react';
 
 interface ScoreTx {
@@ -57,6 +58,27 @@ export default function ScoreHistoryPage() {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('ALL');
   const [teamFilter, setTeamFilter] = useState('ALL');
+
+  const handleDeleteAll = async () => {
+    if (!window.confirm('WARNING: Are you sure you want to delete ALL score transaction logs? This will wipe the audit history but will NOT change current team scores. This CANNOT be undone.')) {
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/admin/scores`, { method: 'DELETE' });
+      if (res.ok) {
+        setTransactions([]);
+        alert('All score transaction logs successfully cleared.');
+      } else {
+        alert('Failed to clear score transaction logs.');
+      }
+    } catch (error) {
+      alert('Error clearing score transaction logs.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchTransactions = async () => {
     try {
@@ -186,13 +208,24 @@ export default function ScoreHistoryPage() {
           </h1>
           <p className="text-sm text-gray-400 mt-1">Audit log of point additions, auction bids, and score modifications.</p>
         </div>
-        <button 
-          onClick={fetchTransactions}
-          disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 bg-purple-950/60 text-purple-300 border border-purple-500/50 hover:bg-purple-900/60 transition-colors text-sm font-semibold rounded"
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Refresh Logs
-        </button>
+        <div className="flex gap-2">
+          {transactions.length > 0 && (
+            <button 
+              onClick={handleDeleteAll}
+              disabled={loading}
+              className="flex items-center gap-2 px-4 py-2 bg-red-950/60 text-red-300 border border-red-500/50 hover:bg-red-900/60 transition-colors text-sm font-semibold rounded"
+            >
+              <Trash2 className="h-4 w-4" /> Clear Logs
+            </button>
+          )}
+          <button 
+            onClick={fetchTransactions}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 bg-purple-950/60 text-purple-300 border border-purple-500/50 hover:bg-purple-900/60 transition-colors text-sm font-semibold rounded"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Refresh Logs
+          </button>
+        </div>
       </div>
 
       {/* Metric Summary Cards */}
