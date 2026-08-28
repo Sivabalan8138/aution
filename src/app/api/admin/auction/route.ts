@@ -132,6 +132,13 @@ export async function POST(request: Request) {
           })
         ]);
 
+        await prisma.eventSettings.updateMany({
+          data: {
+            currentAuctionId: null,
+            eventStatus: 'WAITING',
+          }
+        });
+
         await pusherServer.trigger('public', 'answer_result', {
           result: 'CORRECT',
           team: updatedTeam,
@@ -238,6 +245,13 @@ export async function POST(request: Request) {
             bids: { include: { team: true }, orderBy: [{ amount: 'desc' }, { team: { points: 'desc' } }, { createdAt: 'asc' }] },
             winnerTeam: true,
             scoreTx: true
+          }
+        });
+
+        await prisma.eventSettings.updateMany({
+          data: {
+            currentAuctionId: null,
+            eventStatus: 'WAITING',
           }
         });
       }
