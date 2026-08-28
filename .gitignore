@@ -54,3 +54,5 @@ pass.txt
 .vscode/
 .windsurf/
 .claude/
+
+.vercel
