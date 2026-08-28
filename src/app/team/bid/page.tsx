@@ -41,7 +41,7 @@ export default function TeamBidPage() {
 
   // Fetch team info
   const fetchTeam = async () => {
-    const res = await fetch('/api/team/me', { headers: getAuthHeaders() });
+    const res = await fetch(`/api/team/me?t=${Date.now()}`, { headers: getAuthHeaders() });
     if (res.ok) {
       const data = await res.json();
       setTeam(data);
@@ -131,11 +131,7 @@ export default function TeamBidPage() {
     const previousTeam = { ...team };
     
     // Optimistic UI Update (Instant Response)
-    setTeam({ ...team, points: team.points - amount }); // Deduct points optimistically
-    // We don't deduct it on the backend actually, but visually it's nice, or wait, points are checked against bid amount but not deducted on bid! 
-    // Wait, the backend doesn't deduct points on bid! Points are only deducted if they WIN or penalty! 
-    // Let me check my previous understanding: `if (team.points < bidAmount)`... yes, it just checks.
-    // So we shouldn't deduct points! We just add the bid.
+    // Points are NOT deducted when a bid is placed! They are only deducted if a team wins or is penalized.
     setAuction({
       ...auction,
       bids: [{ id: 'temp-' + Date.now(), amount, team: { id: team.id, teamName: team.teamName } }, ...(auction.bids || [])]

@@ -47,3 +47,4 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 }
+export const dynamic = 'force-dynamic';
