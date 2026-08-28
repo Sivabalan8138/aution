@@ -32,16 +32,29 @@ export async function POST(request: Request) {
 
     // CLOSE BIDDING
     if (action === 'CLOSE_BIDDING') {
-      const { auctionId, winnerTeamId, winningBid } = payload;
+      const { auctionId } = payload;
       
-      const team = await prisma.team.findUnique({ where: { id: winnerTeamId } });
-      if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 });
-
-      // Identify all active teams that didn't bid
+      // Identify all active teams that didn't bid and determine the winner server-side
       const auctionWithBids = await prisma.auction.findUnique({
         where: { id: auctionId },
-        include: { bids: true }
+        include: { 
+          bids: {
+            include: { team: true },
+            orderBy: [{ amount: 'desc' }, { team: { points: 'desc' } }, { createdAt: 'asc' }]
+          }
+        }
       });
+
+      if (!auctionWithBids || auctionWithBids.bids.length === 0) {
+        return NextResponse.json({ error: 'No bids placed yet' }, { status: 400 });
+      }
+
+      const highestBid = auctionWithBids.bids[0];
+      const winnerTeamId = highestBid.teamId;
+      const winningBid = highestBid.amount;
+      const team = highestBid.team;
+
+      if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 });
       const allActiveTeams = await prisma.team.findMany({ where: { status: 'ACTIVE' } });
       const biddingTeamIds = new Set(auctionWithBids?.bids.map((b: any) => b.teamId));
       

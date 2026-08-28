@@ -82,6 +82,13 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
+    const currentHighest = auction.bids[0]?.amount || 0;
+    if (auction.bids.length > 0 && bidAmount <= currentHighest) {
+      return NextResponse.json({
+        error: `Bid must be higher than the current highest bid of ${currentHighest} pts`,
+      }, { status: 400 });
+    }
+
     const newBid = await prisma.bid.create({
       data: { auctionId, teamId, amount: bidAmount },
       include: { team: true },
