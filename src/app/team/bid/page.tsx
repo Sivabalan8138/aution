@@ -133,7 +133,27 @@ export default function TeamBidPage() {
   }, [team, auction?.id]);
 
   const handlePlaceBid = async (amount: number) => {
-    if (!auction || loading) return;
+    if (!auction || loading || !team) return;
+    
+    // Save previous state for rollback
+    const previousAuction = { ...auction };
+    const previousTeam = { ...team };
+    const previousHasBid = hasAlreadyBid;
+    
+    // Optimistic UI Update (Instant Response)
+    setHasAlreadyBid(true);
+    setTeam({ ...team, points: team.points - amount }); // Deduct points optimistically
+    // We don't deduct it on the backend actually, but visually it's nice, or wait, points are checked against bid amount but not deducted on bid! 
+    // Wait, the backend doesn't deduct points on bid! Points are only deducted if they WIN or penalty! 
+    // Let me check my previous understanding: `if (team.points < bidAmount)`... yes, it just checks.
+    // So we shouldn't deduct points! We just add the bid.
+    setAuction({
+      ...auction,
+      bids: [{ id: 'temp-' + Date.now(), amount, team: { id: team.id, teamName: team.teamName } }, ...(auction.bids || [])]
+    });
+    setCustomBid('');
+    // End optimistic UI
+
     setLoading(true);
     try {
       const res = await fetch('/api/team/bid', {
@@ -144,13 +164,20 @@ export default function TeamBidPage() {
       const data = await res.json();
       if (res.ok) {
         showBidStatus('success', `✅ Bid of ${amount} pts placed successfully!`);
-        setCustomBid('');
         fetchTeam();
         fetchAuction();
       } else {
+        // Rollback
+        setAuction(previousAuction);
+        setTeam(previousTeam);
+        setHasAlreadyBid(previousHasBid);
         showBidStatus('error', data.error || 'Failed to place bid');
       }
     } catch {
+      // Rollback
+      setAuction(previousAuction);
+      setTeam(previousTeam);
+      setHasAlreadyBid(previousHasBid);
       showBidStatus('error', 'Network error. Try again.');
     } finally {
       setLoading(false);
