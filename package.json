@@ -25,9 +25,7 @@
     "react-dom": "19.2.8",
     "tsx": "^4.23.12",
     "typescript": "^6.0.3",
-    "zod": "^4.4.3"
-  },
-  "devDependencies": {
+    "zod": "^4.4.3",
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
