@@ -59,7 +59,7 @@ export default function LiveScreenPage() {
 
   useEffect(() => {
     fetchAuction();
-    const interval = setInterval(fetchAuction, 2000);
+    const interval = setInterval(fetchAuction, 30000);
 
     const pusher = getPusherClient();
     const channel = pusher.subscribe('public');

@@ -78,13 +78,19 @@ export default function TeamBidPage() {
     fetchTeam();
     fetchAuction();
 
+    // Use a 30-second fallback poll instead of 2-second aggressive polling
     const interval = setInterval(() => {
       fetchAuction();
       fetchTeam();
-    }, 2000);
+    }, 30000);
 
     const pusher = getPusherClient();
     const channel = pusher.subscribe('public');
+
+    const refreshAll = () => {
+      fetchAuction().then(data => checkAlreadyBid(data));
+      fetchTeam();
+    };
 
     channel.bind('auction_started', (newAuction: Auction) => {
       setAuction(newAuction);
@@ -93,18 +99,8 @@ export default function TeamBidPage() {
       setResultOverlay(null);
     });
 
-    channel.bind('bid_placed', () => {
-      fetchAuction().then(data => checkAlreadyBid(data));
-      // Refresh our team points too
-      fetchTeam();
-    });
-
-    channel.bind('timer_tick', (t: number) => setTimer(t));
-
-    channel.bind('bidding_closed', () => {
-      fetchAuction();
-    });
-
+    channel.bind('bid_placed', refreshAll);
+    channel.bind('bidding_closed', refreshAll);
     channel.bind('answer_result', ({ result, team: evaluatedTeam, amount }: any) => {
       fetchAuction().then((data: Auction | null) => {
         fetchTeam(); // refresh our points

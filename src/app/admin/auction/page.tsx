@@ -140,15 +140,29 @@ export default function AdminAuctionPage() {
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadData, 2000);
+    // Use a long 30-second fallback poll instead of aggressive 2-second polling
+    const interval = setInterval(loadData, 30000);
     const pusher = getPusherClient();
     const channel = pusher.subscribe('public');
-    channel.bind('bid_placed', () => {
-      fetch('/api/admin/auction').then(r => r.json()).then(setCurrentAuction);
-    });
+    
+    const refreshAuction = () => fetch('/api/admin/auction').then(r => r.json()).then(setCurrentAuction);
+    const refreshAll = () => loadData();
+    
+    channel.bind('bid_placed', refreshAuction);
+    channel.bind('auction_started', refreshAll);
+    channel.bind('bidding_closed', refreshAuction);
+    channel.bind('answer_result', refreshAll);
+    channel.bind('score_updated', refreshAll);
+    channel.bind('leaderboard_updated', refreshAll);
+
     return () => {
       clearInterval(interval);
-      channel.unbind('bid_placed');
+      channel.unbind('bid_placed', refreshAuction);
+      channel.unbind('auction_started', refreshAll);
+      channel.unbind('bidding_closed', refreshAuction);
+      channel.unbind('answer_result', refreshAll);
+      channel.unbind('score_updated', refreshAll);
+      channel.unbind('leaderboard_updated', refreshAll);
       pusher.unsubscribe('public');
     };
   }, [loadData]);

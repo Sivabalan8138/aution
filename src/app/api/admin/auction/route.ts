@@ -65,7 +65,7 @@ export async function POST(request: Request) {
       const noBidTeamUpdates = noBidTeams.map(t => 
         prisma.team.update({
           where: { id: t.id },
-          data: { points: Math.max(0, t.points - 500) }
+          data: { points: Math.max(0, t.points - 50) }
         })
       );
       
@@ -74,11 +74,11 @@ export async function POST(request: Request) {
           data: {
             teamId: t.id,
             auctionId,
-            amount: 500,
+            amount: 50,
             type: 'AUCTION_LOSS',
             previousPoints: t.points,
-            newPoints: Math.max(0, t.points - 500),
-            reason: `Penalty for not participating in auction (-500 pts)`
+            newPoints: Math.max(0, t.points - 50),
+            reason: `Penalty for not participating in auction (-50 pts)`
           }
         })
       );

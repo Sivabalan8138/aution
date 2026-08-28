@@ -62,7 +62,7 @@ export default function LeaderboardPage() {
     fetchLeaderboard();
     
     // Fallback polling (slower, since sockets handle realtime)
-    const interval = setInterval(fetchLeaderboard, 10000);
+    const interval = setInterval(fetchLeaderboard, 60000);
 
     // Pusher for Real-time
     const pusher = getPusherClient();

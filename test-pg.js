@@ -1,0 +1,1 @@
+import 'dotenv/config'; import pg from 'pg'; const dbUrl = (process.env.DATABASE_URL || '').replace('sslmode=require', 'ssl=true'); const pool = new pg.Pool({ connectionString: dbUrl }); pool.query('SELECT 1').then(r => console.log('success')).catch(console.error).finally(() => pool.end());
