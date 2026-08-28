@@ -66,6 +66,27 @@ export default function AuctionHistoryPage() {
     }
   };
 
+  const handleDeleteAll = async () => {
+    if (!window.confirm('CRITICAL: Are you sure you want to delete ALL auction history? This will revert ALL points awarded/deducted during these rounds. This CANNOT be undone.')) {
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/admin/history`, { method: 'DELETE' });
+      if (res.ok) {
+        setHistory([]);
+        alert('All auction history successfully deleted.');
+      } else {
+        alert('Failed to delete all auction history.');
+      }
+    } catch (error) {
+      alert('Error deleting all auction history.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const fetchHistory = async () => {
     try {
       setLoading(true);
@@ -156,13 +177,24 @@ export default function AuctionHistoryPage() {
           </h1>
           <p className="text-sm text-gray-400 mt-1">Complete record of completed auction rounds, winning bids, and responses.</p>
         </div>
-        <button 
-          onClick={fetchHistory}
-          disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 bg-purple-950/60 text-purple-300 border border-purple-500/50 hover:bg-purple-900/60 transition-colors text-sm font-semibold rounded"
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Refresh Log
-        </button>
+        <div className="flex gap-2">
+          {history.length > 0 && (
+            <button 
+              onClick={handleDeleteAll}
+              disabled={loading}
+              className="flex items-center gap-2 px-4 py-2 bg-red-950/60 text-red-300 border border-red-500/50 hover:bg-red-900/60 transition-colors text-sm font-semibold rounded"
+            >
+              <Trash2 className="h-4 w-4" /> Delete All
+            </button>
+          )}
+          <button 
+            onClick={fetchHistory}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 bg-purple-950/60 text-purple-300 border border-purple-500/50 hover:bg-purple-900/60 transition-colors text-sm font-semibold rounded"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Refresh Log
+          </button>
+        </div>
       </div>
 
       {/* Summary Metric Cards */}
