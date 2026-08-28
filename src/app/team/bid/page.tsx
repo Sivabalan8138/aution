@@ -28,7 +28,6 @@ export default function TeamBidPage() {
   const [customBid, setCustomBid] = useState('');
   const [bidStatus, setBidStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [loading, setLoading] = useState(false);
-  const [hasAlreadyBid, setHasAlreadyBid] = useState(false);
   const [resultOverlay, setResultOverlay] = useState<{ result: string; isOurTeam: boolean; amount: number } | null>(null);
   const bidStatusTimeout = useRef<NodeJS.Timeout | null>(null);
 
@@ -69,10 +68,7 @@ export default function TeamBidPage() {
   };
 
   // Check if our team has already bid
-  const checkAlreadyBid = (auctionData: Auction | null) => {
-    if (!auctionData || !team || !Array.isArray(auctionData.bids)) { setHasAlreadyBid(false); return; }
-    setHasAlreadyBid(auctionData.bids.some(b => b?.team?.id === team.id));
-  };
+  const hasAlreadyBid = auction?.bids?.some(b => b?.team?.id === team?.id) || false;
 
   useEffect(() => {
     fetchTeam();
@@ -88,14 +84,13 @@ export default function TeamBidPage() {
     const channel = pusher.subscribe('public');
 
     const refreshAll = () => {
-      fetchAuction().then(data => checkAlreadyBid(data));
+      fetchAuction();
       fetchTeam();
     };
 
     channel.bind('auction_started', (newAuction: Auction) => {
       setAuction(newAuction);
       setTimer(newAuction?.question?.timeLimit || 30);
-      setHasAlreadyBid(false);
       setResultOverlay(null);
     });
 
@@ -117,7 +112,6 @@ export default function TeamBidPage() {
 
     channel.bind('auction_cancelled', () => {
       setAuction(null);
-      setHasAlreadyBid(false);
     });
 
     return () => {
@@ -127,10 +121,7 @@ export default function TeamBidPage() {
     };
   }, []);
 
-  // Update hasAlreadyBid when team loads
-  useEffect(() => {
-    checkAlreadyBid(auction);
-  }, [team, auction?.id]);
+
 
   const handlePlaceBid = async (amount: number) => {
     if (!auction || loading || !team) return;
@@ -138,10 +129,8 @@ export default function TeamBidPage() {
     // Save previous state for rollback
     const previousAuction = { ...auction };
     const previousTeam = { ...team };
-    const previousHasBid = hasAlreadyBid;
     
     // Optimistic UI Update (Instant Response)
-    setHasAlreadyBid(true);
     setTeam({ ...team, points: team.points - amount }); // Deduct points optimistically
     // We don't deduct it on the backend actually, but visually it's nice, or wait, points are checked against bid amount but not deducted on bid! 
     // Wait, the backend doesn't deduct points on bid! Points are only deducted if they WIN or penalty! 
@@ -170,14 +159,12 @@ export default function TeamBidPage() {
         // Rollback
         setAuction(previousAuction);
         setTeam(previousTeam);
-        setHasAlreadyBid(previousHasBid);
         showBidStatus('error', data.error || 'Failed to place bid');
       }
     } catch {
       // Rollback
       setAuction(previousAuction);
       setTeam(previousTeam);
-      setHasAlreadyBid(previousHasBid);
       showBidStatus('error', 'Network error. Try again.');
     } finally {
       setLoading(false);
