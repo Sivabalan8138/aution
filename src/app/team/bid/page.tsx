@@ -366,29 +366,42 @@ export default function TeamBidPage() {
 
         {/* Bidding Closed — answer phase */}
         {auction && auction.status === 'CLOSED' && (
-          <div className="flex flex-col items-center justify-center min-h-[60vh] text-center gap-6">
-            <div className="w-24 h-24 rounded-full bg-yellow-500/10 flex items-center justify-center border border-yellow-500/20 animate-pulse">
-              <Gavel className="h-12 w-12 text-yellow-400" />
+          <div className="space-y-6">
+            {/* Question Card */}
+            <div className="glass-card p-6 border-t-4 border-yellow-500 relative overflow-hidden text-left">
+              <div className="absolute top-4 right-4 font-mono text-sm text-gray-400">
+                BASE: <span className="text-white font-bold">{auction.question?.basePoints ?? 0}</span>
+              </div>
+              <div className={`text-xs font-bold uppercase tracking-widest mb-3 ${difficultyColor(auction.question?.difficulty || 'EASY')}`}>
+                {auction.question?.difficulty || 'EASY'} · {auction.question?.category || 'General'}
+              </div>
+              <p className="text-xl md:text-2xl font-medium leading-relaxed">{auction.question?.text}</p>
             </div>
-            <div>
-              <div className="text-yellow-400 font-bold uppercase tracking-widest mb-3 text-sm">● Bidding Closed</div>
-              <h2 className="text-3xl font-black tracking-widest uppercase mb-3">Answer Phase</h2>
-              <p className="text-gray-400">
-                Waiting for{' '}
-                <span className="text-white font-bold">
-                  {auction.winnerTeam?.teamName || auction.bids?.[0]?.team?.teamName || 'the winner'}
-                </span>{' '}
-                to answer...
-              </p>
-              {auction.winnerTeam?.id === team?.id && (
-                <div className="mt-4 px-6 py-3 bg-yellow-500/10 border border-yellow-500/30 text-yellow-300 rounded font-bold text-lg animate-pulse">
-                  🎯 It's YOUR turn to answer!
-                </div>
-              )}
-            </div>
-            <div className="glass-card p-5 border border-white/5 text-center">
-              <div className="text-sm text-gray-400 mb-1">Winning Bid</div>
-              <div className="text-5xl font-mono font-black text-yellow-400">{auction.winningBid}</div>
+
+            <div className="flex flex-col items-center justify-center py-8 text-center gap-6">
+              <div className="w-24 h-24 rounded-full bg-yellow-500/10 flex items-center justify-center border border-yellow-500/20 animate-pulse">
+                <Gavel className="h-12 w-12 text-yellow-400" />
+              </div>
+              <div>
+                <div className="text-yellow-400 font-bold uppercase tracking-widest mb-3 text-sm">● Bidding Closed</div>
+                <h2 className="text-3xl font-black tracking-widest uppercase mb-3">Answer Phase</h2>
+                <p className="text-gray-400">
+                  Waiting for{' '}
+                  <span className="text-white font-bold">
+                    {auction.winnerTeam?.teamName || auction.bids?.[0]?.team?.teamName || 'the winner'}
+                  </span>{' '}
+                  to answer...
+                </p>
+                {auction.winnerTeam?.id === team?.id && (
+                  <div className="mt-4 px-6 py-3 bg-yellow-500/10 border border-yellow-500/30 text-yellow-300 rounded font-bold text-lg animate-pulse">
+                    🎯 It's YOUR turn to answer!
+                  </div>
+                )}
+              </div>
+              <div className="glass-card p-5 border border-white/5 text-center">
+                <div className="text-sm text-gray-400 mb-1">Winning Bid</div>
+                <div className="text-5xl font-mono font-black text-yellow-400">{auction.winningBid}</div>
+              </div>
             </div>
           </div>
         )}
